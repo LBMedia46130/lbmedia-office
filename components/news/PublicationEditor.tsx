@@ -27,67 +27,42 @@ export default function PublicationEditor({
   publication,
   label,
 }: PublicationEditorProps) {
-  const [title, setTitle] = useState(
-    publication.title ?? ""
-  );
-
-  const [content, setContent] = useState(
-    publication.content
-  );
-
+  const [title, setTitle] = useState(publication.title ?? "");
+  const [content, setContent] = useState(publication.content);
   const [status, setStatus] =
-    useState<PublicationStatus>(
-      publication.status
-    );
+    useState<PublicationStatus>(publication.status);
 
-  const [slug, setSlug] = useState(
-    publication.slug ?? ""
-  );
-
+  const [slug, setSlug] = useState(publication.slug ?? "");
   const [seoTitle, setSeoTitle] = useState(
     publication.seo_title ?? ""
   );
-
-  const [
-    metaDescription,
-    setMetaDescription,
-  ] = useState(
+  const [metaDescription, setMetaDescription] = useState(
     publication.meta_description ?? ""
   );
 
   const [subject, setSubject] = useState(
     publication.subject ?? ""
   );
+  const [previewText, setPreviewText] = useState(
+    publication.preview_text ?? ""
+  );
 
-  const [previewText, setPreviewText] =
-    useState(
-      publication.preview_text ?? ""
-    );
-
-  const [
-    callToAction,
-    setCallToAction,
-  ] = useState(
+  const [callToAction, setCallToAction] = useState(
     publication.call_to_action ?? ""
   );
 
   const [linkUrl, setLinkUrl] = useState(
     publication.link_url ?? ""
   );
-
   const [hashtags, setHashtags] = useState(
     publication.hashtags ?? ""
   );
 
-  const [isSaving, setIsSaving] =
-    useState(false);
-
-  const [isGenerating, setIsGenerating] =
-    useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const [message, setMessage] =
     useState<string | null>(null);
-
   const [error, setError] =
     useState<string | null>(null);
 
@@ -113,8 +88,7 @@ export default function PublicationEditor({
             status,
             slug,
             seo_title: seoTitle,
-            meta_description:
-              metaDescription,
+            meta_description: metaDescription,
             subject,
             preview_text: previewText,
             call_to_action: callToAction,
@@ -132,6 +106,8 @@ export default function PublicationEditor({
             "Impossible d’enregistrer."
         );
       }
+
+      syncFields(result.publication);
 
       setMessage("Enregistré.");
     } catch (saveError) {
@@ -177,9 +153,7 @@ export default function PublicationEditor({
         );
       }
 
-      setContent(
-        result.publication.content ?? ""
-      );
+      syncFields(result.publication);
 
       setMessage(
         "Nouvelle proposition générée et enregistrée."
@@ -193,6 +167,34 @@ export default function PublicationEditor({
     } finally {
       setIsGenerating(false);
     }
+  }
+
+  function syncFields(
+    updatedPublication: Publication
+  ) {
+    setTitle(updatedPublication.title ?? "");
+    setContent(updatedPublication.content ?? "");
+    setStatus(updatedPublication.status);
+
+    setSlug(updatedPublication.slug ?? "");
+    setSeoTitle(
+      updatedPublication.seo_title ?? ""
+    );
+    setMetaDescription(
+      updatedPublication.meta_description ?? ""
+    );
+
+    setSubject(updatedPublication.subject ?? "");
+    setPreviewText(
+      updatedPublication.preview_text ?? ""
+    );
+
+    setCallToAction(
+      updatedPublication.call_to_action ?? ""
+    );
+
+    setLinkUrl(updatedPublication.link_url ?? "");
+    setHashtags(updatedPublication.hashtags ?? "");
   }
 
   return (
@@ -212,8 +214,7 @@ export default function PublicationEditor({
           value={status}
           onChange={(event) =>
             setStatus(
-              event.target
-                .value as PublicationStatus
+              event.target.value as PublicationStatus
             )
           }
           className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 outline-none"
@@ -233,9 +234,7 @@ export default function PublicationEditor({
         <button
           type="button"
           onClick={generatePublication}
-          disabled={
-            isGenerating || isSaving
-          }
+          disabled={isGenerating || isSaving}
           className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isGenerating
@@ -276,9 +275,7 @@ export default function PublicationEditor({
             <TextArea
               label="Méta-description"
               value={metaDescription}
-              onChange={
-                setMetaDescription
-              }
+              onChange={setMetaDescription}
               rows={3}
             />
           </>
@@ -314,8 +311,7 @@ export default function PublicationEditor({
           </>
         ) : null}
 
-        {channel ===
-        "google_business" ? (
+        {channel === "google_business" ? (
           <>
             <TextArea
               label="Texte Google Business"
@@ -400,9 +396,7 @@ export default function PublicationEditor({
         <button
           type="button"
           onClick={savePublication}
-          disabled={
-            isSaving || isGenerating
-          }
+          disabled={isSaving || isGenerating}
           className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSaving

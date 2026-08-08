@@ -12,6 +12,19 @@ type RouteContext = {
   }>;
 };
 
+type GeneratedPublication = {
+  title?: string;
+  content: string;
+  slug?: string;
+  seo_title?: string;
+  meta_description?: string;
+  subject?: string;
+  preview_text?: string;
+  call_to_action?: string;
+  link_url?: string;
+  hashtags?: string;
+};
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -21,35 +34,75 @@ const channelInstructions: Record<
   string
 > = {
   website: `
-Rédige un article web professionnel pour le site de LBMedia.
-Le texte doit être clair, naturel, utile à une PME/PMI et suffisamment développé.
-Évite le jargon marketing inutile.
-Le contenu doit pouvoir servir de contenu éditorial de référence.
+Prépare l'article destiné au site web LBMedia.
+
+Retourne :
+- title : titre éditorial de l'article
+- content : article complet, professionnel, naturel et structuré
+- slug : slug court en minuscules avec des tirets
+- seo_title : titre SEO naturel
+- meta_description : méta-description concise
+
+N'utilise pas de jargon inutile.
+Le contenu doit être utile à une PME/PMI.
 `,
 
   brevo: `
 Prépare une newsletter Brevo courte et engageante.
-Elle doit donner envie de lire ou de découvrir le contenu sans recopier intégralement l'article.
-Le ton doit être professionnel, humain et direct.
+
+Retourne :
+- subject : objet de l'email
+- preview_text : préheader
+- content : contenu de la newsletter
+
+La newsletter doit donner envie de découvrir le sujet
+sans recopier intégralement l'article.
 `,
 
   google_business: `
-Rédige une publication Google Business concise et immédiatement compréhensible.
-Mets en avant l'information essentielle et termine naturellement par une invitation à en savoir plus.
+Prépare une publication Google Business.
+
+Retourne :
+- content : texte concis et immédiatement compréhensible
+- call_to_action : appel à l'action court
+
+Le texte doit présenter l'information essentielle
+et inciter naturellement à en savoir plus.
 `,
 
   linkedin: `
-Rédige un post LinkedIn professionnel et naturel.
-L'accroche doit donner envie de poursuivre la lecture.
-Le texte doit être agréable à lire sur LinkedIn, avec des paragraphes courts.
-Évite les formulations artificielles et les clichés liés à l'intelligence artificielle.
+Prépare un post LinkedIn professionnel et naturel.
+
+Retourne :
+- content : publication LinkedIn
+- hashtags : quelques hashtags réellement pertinents
+
+Utilise une accroche intéressante, des paragraphes courts
+et évite les clichés marketing ou liés à l'intelligence artificielle.
 `,
 
   facebook: `
-Rédige une publication Facebook accessible, naturelle et concise.
-Le ton peut être légèrement plus conversationnel que sur LinkedIn tout en restant professionnel.
+Prépare une publication Facebook.
+
+Retourne :
+- content : texte accessible, naturel et concis
+
+Le ton peut être légèrement plus conversationnel que sur LinkedIn
+tout en restant professionnel.
 `,
 };
+
+function getText(
+  value: unknown
+): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+
+  return trimmed || null;
+}
 
 export async function POST(
   _request: Request,
@@ -140,9 +193,9 @@ Titre de l'actualité :
 ${newsRelation.title}
 
 Contenu de référence :
-${newsRelation.content || "Aucun contenu de référence détaillé."}
+${newsRelation.content || "Aucun contenu détaillé."}
 
-Lien éventuel :
+Lien associé :
 ${newsRelation.source_url || "Aucun lien"}
 `;
 
@@ -150,53 +203,213 @@ ${newsRelation.source_url || "Aucun lien"}
     const response =
       await openai.responses.create({
         model: "gpt-5-mini",
+
         instructions: `
 Tu travailles pour LBMedia, une agence de communication française.
 
-Ta mission est d'adapter une actualité existante à un support précis.
+Tu adaptes une actualité existante à un support de communication précis.
 
-Règles générales :
-- respecte strictement les faits présents dans le contenu source ;
-- n'invente aucune information ;
+Règles :
 - écris en français ;
-- adopte un style professionnel, naturel et directement exploitable ;
-- évite les phrases génériques et le jargon ;
-- ne commente jamais ton travail ;
-- retourne uniquement le texte final destiné à être publié.
+- respecte strictement les informations du contenu source ;
+- n'invente aucun fait ;
+- écris un contenu directement exploitable ;
+- adopte un style professionnel, naturel et humain ;
+- évite le jargon et les formulations génériques ;
+- n'ajoute aucune explication sur ton travail.
 
-Consignes spécifiques au support :
 ${channelInstructions[channel]}
+
+Retourne exclusivement un objet JSON valide.
+N'utilise aucun bloc Markdown.
 `,
+
         input: sourceContent,
+
+        text: {
+          format: {
+            type: "json_schema",
+            name: "publication",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                title: {
+                  type: [
+                    "string",
+                    "null",
+                  ],
+                },
+                content: {
+                  type: "string",
+                },
+                slug: {
+                  type: [
+                    "string",
+                    "null",
+                  ],
+                },
+                seo_title: {
+                  type: [
+                    "string",
+                    "null",
+                  ],
+                },
+                meta_description: {
+                  type: [
+                    "string",
+                    "null",
+                  ],
+                },
+                subject: {
+                  type: [
+                    "string",
+                    "null",
+                  ],
+                },
+                preview_text: {
+                  type: [
+                    "string",
+                    "null",
+                  ],
+                },
+                call_to_action: {
+                  type: [
+                    "string",
+                    "null",
+                  ],
+                },
+                link_url: {
+                  type: [
+                    "string",
+                    "null",
+                  ],
+                },
+                hashtags: {
+                  type: [
+                    "string",
+                    "null",
+                  ],
+                },
+              },
+
+              required: [
+                "title",
+                "content",
+                "slug",
+                "seo_title",
+                "meta_description",
+                "subject",
+                "preview_text",
+                "call_to_action",
+                "link_url",
+                "hashtags",
+              ],
+
+              additionalProperties: false,
+            },
+          },
+        },
       });
 
-    const generatedContent =
+    const rawOutput =
       response.output_text.trim();
 
-    if (!generatedContent) {
+    if (!rawOutput) {
       throw new Error(
         "OpenAI n'a retourné aucun contenu."
       );
     }
 
-    const { data: updatedPublication, error: updateError } =
-      await supabaseAdmin
-        .from("publications")
-        .update({
-          content: generatedContent,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", id)
-        .select("*")
-        .single();
+    const generated =
+      JSON.parse(
+        rawOutput
+      ) as GeneratedPublication;
+
+    if (!generated.content?.trim()) {
+      throw new Error(
+        "Le contenu généré est vide."
+      );
+    }
+
+    const updateData: Record<
+      string,
+      string | null
+    > = {
+      content: generated.content.trim(),
+      updated_at:
+        new Date().toISOString(),
+    };
+
+    if (channel === "website") {
+      updateData.title =
+        getText(generated.title);
+
+      updateData.slug =
+        getText(generated.slug);
+
+      updateData.seo_title =
+        getText(
+          generated.seo_title
+        );
+
+      updateData.meta_description =
+        getText(
+          generated.meta_description
+        );
+    }
+
+    if (channel === "brevo") {
+      updateData.subject =
+        getText(generated.subject);
+
+      updateData.preview_text =
+        getText(
+          generated.preview_text
+        );
+    }
+
+    if (
+      channel === "google_business"
+    ) {
+      updateData.call_to_action =
+        getText(
+          generated.call_to_action
+        );
+    }
+
+    if (channel === "linkedin") {
+      updateData.hashtags =
+        getText(
+          generated.hashtags
+        );
+    }
+
+    if (newsRelation.source_url) {
+      updateData.link_url =
+        newsRelation.source_url;
+    }
+
+    const {
+      data: updatedPublication,
+      error: updateError,
+    } = await supabaseAdmin
+      .from("publications")
+      .update(updateData)
+      .eq("id", id)
+      .select("*")
+      .single();
 
     if (updateError) {
-      throw new Error(updateError.message);
+      throw new Error(
+        updateError.message
+      );
     }
 
     return NextResponse.json({
       success: true,
-      publication: updatedPublication,
+      publication:
+        updatedPublication,
     });
   } catch (error) {
     console.error(
