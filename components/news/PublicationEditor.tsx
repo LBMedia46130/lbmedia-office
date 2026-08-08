@@ -23,46 +23,118 @@ const statuses: {
   { value: "published", label: "Publiée" },
 ];
 
+function toLocalDateTimeValue(
+  value: string | null
+) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const offset =
+    date.getTimezoneOffset() * 60_000;
+
+  return new Date(
+    date.getTime() - offset
+  )
+    .toISOString()
+    .slice(0, 16);
+}
+
+function toIsoDateTime(
+  value: string
+) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date.toISOString();
+}
+
 export default function PublicationEditor({
   publication,
   label,
 }: PublicationEditorProps) {
-  const [title, setTitle] = useState(publication.title ?? "");
-  const [content, setContent] = useState(publication.content);
-  const [status, setStatus] =
-    useState<PublicationStatus>(publication.status);
-
-  const [slug, setSlug] = useState(publication.slug ?? "");
-  const [seoTitle, setSeoTitle] = useState(
-    publication.seo_title ?? ""
+  const [title, setTitle] = useState(
+    publication.title ?? ""
   );
-  const [metaDescription, setMetaDescription] = useState(
+
+  const [content, setContent] = useState(
+    publication.content
+  );
+
+  const [status, setStatus] =
+    useState<PublicationStatus>(
+      publication.status
+    );
+
+  const [scheduledAt, setScheduledAt] =
+    useState(
+      toLocalDateTimeValue(
+        publication.scheduled_at
+      )
+    );
+
+  const [slug, setSlug] = useState(
+    publication.slug ?? ""
+  );
+
+  const [seoTitle, setSeoTitle] =
+    useState(
+      publication.seo_title ?? ""
+    );
+
+  const [
+    metaDescription,
+    setMetaDescription,
+  ] = useState(
     publication.meta_description ?? ""
   );
 
   const [subject, setSubject] = useState(
     publication.subject ?? ""
   );
-  const [previewText, setPreviewText] = useState(
-    publication.preview_text ?? ""
-  );
 
-  const [callToAction, setCallToAction] = useState(
+  const [previewText, setPreviewText] =
+    useState(
+      publication.preview_text ?? ""
+    );
+
+  const [
+    callToAction,
+    setCallToAction,
+  ] = useState(
     publication.call_to_action ?? ""
   );
 
   const [linkUrl, setLinkUrl] = useState(
     publication.link_url ?? ""
   );
+
   const [hashtags, setHashtags] = useState(
     publication.hashtags ?? ""
   );
 
-  const [isSaving, setIsSaving] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] =
+    useState(false);
+
+  const [isGenerating, setIsGenerating] =
+    useState(false);
 
   const [message, setMessage] =
     useState<string | null>(null);
+
   const [error, setError] =
     useState<string | null>(null);
 
@@ -70,6 +142,17 @@ export default function PublicationEditor({
     publication.channel as PublicationChannel;
 
   async function savePublication() {
+    if (
+      status === "scheduled" &&
+      !scheduledAt
+    ) {
+      setMessage(null);
+      setError(
+        "Choisis une date et une heure de publication."
+      );
+      return;
+    }
+
     setIsSaving(true);
     setMessage(null);
     setError(null);
@@ -80,34 +163,49 @@ export default function PublicationEditor({
         {
           method: "PATCH",
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type":
+              "application/json",
           },
           body: JSON.stringify({
             title,
             content,
             status,
+            scheduled_at:
+              status === "scheduled"
+                ? toIsoDateTime(
+                    scheduledAt
+                  )
+                : null,
             slug,
             seo_title: seoTitle,
-            meta_description: metaDescription,
+            meta_description:
+              metaDescription,
             subject,
             preview_text: previewText,
-            call_to_action: callToAction,
+            call_to_action:
+              callToAction,
             link_url: linkUrl,
             hashtags,
           }),
         }
       );
 
-      const result = await response.json();
+      const result =
+        await response.json();
 
-      if (!response.ok || !result.success) {
+      if (
+        !response.ok ||
+        !result.success
+      ) {
         throw new Error(
           result.message ??
             "Impossible d’enregistrer."
         );
       }
 
-      syncFields(result.publication);
+      syncFields(
+        result.publication
+      );
 
       setMessage("Enregistré.");
     } catch (saveError) {
@@ -144,16 +242,22 @@ export default function PublicationEditor({
         }
       );
 
-      const result = await response.json();
+      const result =
+        await response.json();
 
-      if (!response.ok || !result.success) {
+      if (
+        !response.ok ||
+        !result.success
+      ) {
         throw new Error(
           result.message ??
             "Impossible de générer le contenu."
         );
       }
 
-      syncFields(result.publication);
+      syncFields(
+        result.publication
+      );
 
       setMessage(
         "Nouvelle proposition générée et enregistrée."
@@ -172,29 +276,58 @@ export default function PublicationEditor({
   function syncFields(
     updatedPublication: Publication
   ) {
-    setTitle(updatedPublication.title ?? "");
-    setContent(updatedPublication.content ?? "");
-    setStatus(updatedPublication.status);
+    setTitle(
+      updatedPublication.title ?? ""
+    );
 
-    setSlug(updatedPublication.slug ?? "");
+    setContent(
+      updatedPublication.content ?? ""
+    );
+
+    setStatus(
+      updatedPublication.status
+    );
+
+    setScheduledAt(
+      toLocalDateTimeValue(
+        updatedPublication.scheduled_at
+      )
+    );
+
+    setSlug(
+      updatedPublication.slug ?? ""
+    );
+
     setSeoTitle(
       updatedPublication.seo_title ?? ""
     );
+
     setMetaDescription(
-      updatedPublication.meta_description ?? ""
+      updatedPublication.meta_description ??
+        ""
     );
 
-    setSubject(updatedPublication.subject ?? "");
+    setSubject(
+      updatedPublication.subject ?? ""
+    );
+
     setPreviewText(
-      updatedPublication.preview_text ?? ""
+      updatedPublication.preview_text ??
+        ""
     );
 
     setCallToAction(
-      updatedPublication.call_to_action ?? ""
+      updatedPublication.call_to_action ??
+        ""
     );
 
-    setLinkUrl(updatedPublication.link_url ?? "");
-    setHashtags(updatedPublication.hashtags ?? "");
+    setLinkUrl(
+      updatedPublication.link_url ?? ""
+    );
+
+    setHashtags(
+      updatedPublication.hashtags ?? ""
+    );
   }
 
   return (
@@ -206,35 +339,72 @@ export default function PublicationEditor({
           </h3>
 
           <p className="mt-1 text-xs text-slate-500">
-            {getChannelDescription(channel)}
+            {getChannelDescription(
+              channel
+            )}
           </p>
         </div>
 
         <select
           value={status}
-          onChange={(event) =>
-            setStatus(
-              event.target.value as PublicationStatus
-            )
-          }
+          onChange={(event) => {
+            const nextStatus =
+              event.target
+                .value as PublicationStatus;
+
+            setStatus(nextStatus);
+
+            if (
+              nextStatus !==
+              "scheduled"
+            ) {
+              setScheduledAt("");
+            }
+          }}
           className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 outline-none"
         >
-          {statuses.map((option) => (
-            <option
-              key={option.value}
-              value={option.value}
-            >
-              {option.label}
-            </option>
-          ))}
+          {statuses.map(
+            (option) => (
+              <option
+                key={option.value}
+                value={option.value}
+              >
+                {option.label}
+              </option>
+            )
+          )}
         </select>
       </div>
+
+      {status === "scheduled" ? (
+        <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Date et heure de
+            publication
+          </label>
+
+          <input
+            type="datetime-local"
+            value={scheduledAt}
+            onChange={(event) =>
+              setScheduledAt(
+                event.target.value
+              )
+            }
+            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-950"
+          />
+        </div>
+      ) : null}
 
       <div className="mt-5 flex justify-end">
         <button
           type="button"
-          onClick={generatePublication}
-          disabled={isGenerating || isSaving}
+          onClick={
+            generatePublication
+          }
+          disabled={
+            isGenerating || isSaving
+          }
           className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isGenerating
@@ -275,7 +445,9 @@ export default function PublicationEditor({
             <TextArea
               label="Méta-description"
               value={metaDescription}
-              onChange={setMetaDescription}
+              onChange={
+                setMetaDescription
+              }
               rows={3}
             />
           </>
@@ -292,7 +464,9 @@ export default function PublicationEditor({
             <Field
               label="Préheader"
               value={previewText}
-              onChange={setPreviewText}
+              onChange={
+                setPreviewText
+              }
             />
 
             <TextArea
@@ -311,7 +485,8 @@ export default function PublicationEditor({
           </>
         ) : null}
 
-        {channel === "google_business" ? (
+        {channel ===
+        "google_business" ? (
           <>
             <TextArea
               label="Texte Google Business"
@@ -323,7 +498,9 @@ export default function PublicationEditor({
             <Field
               label="Appel à l’action"
               value={callToAction}
-              onChange={setCallToAction}
+              onChange={
+                setCallToAction
+              }
               placeholder="En savoir plus"
             />
 
@@ -387,7 +564,7 @@ export default function PublicationEditor({
       ) : null}
 
       {error ? (
-        <p className="mt-4 text-sm text-red-700">
+        <p className="mt-4 text-sm font-medium text-red-700">
           {error}
         </p>
       ) : null}
@@ -396,7 +573,10 @@ export default function PublicationEditor({
         <button
           type="button"
           onClick={savePublication}
-          disabled={isSaving || isGenerating}
+          disabled={
+            isSaving ||
+            isGenerating
+          }
           className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSaving
@@ -411,7 +591,9 @@ export default function PublicationEditor({
 type FieldProps = {
   label: string;
   value: string;
-  onChange: (value: string) => void;
+  onChange: (
+    value: string
+  ) => void;
   placeholder?: string;
 };
 
@@ -430,7 +612,9 @@ function Field({
       <input
         value={value}
         onChange={(event) =>
-          onChange(event.target.value)
+          onChange(
+            event.target.value
+          )
         }
         placeholder={placeholder}
         className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-950"
@@ -442,7 +626,9 @@ function Field({
 type TextAreaProps = {
   label: string;
   value: string;
-  onChange: (value: string) => void;
+  onChange: (
+    value: string
+  ) => void;
   rows: number;
 };
 
@@ -461,7 +647,9 @@ function TextArea({
       <textarea
         value={value}
         onChange={(event) =>
-          onChange(event.target.value)
+          onChange(
+            event.target.value
+          )
         }
         rows={rows}
         className="mt-2 w-full resize-y rounded-xl border border-slate-300 px-4 py-3 text-sm leading-6 text-slate-950 outline-none focus:border-slate-950"
