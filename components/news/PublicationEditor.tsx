@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
 import type {
   Publication,
@@ -17,39 +20,67 @@ const statuses: {
   value: PublicationStatus;
   label: string;
 }[] = [
-  { value: "draft", label: "Brouillon" },
-  { value: "ready", label: "Prête" },
-  { value: "scheduled", label: "Planifiée" },
-  { value: "published", label: "Publiée" },
+  {
+    value: "draft",
+    label: "Brouillon",
+  },
+  {
+    value: "ready",
+    label: "Prête",
+  },
+  {
+    value: "scheduled",
+    label: "Planifiée",
+  },
+  {
+    value: "published",
+    label: "Publiée",
+  },
 ];
 
-function toLocalDateTimeValue(value: string | null) {
+function toLocalDateTimeValue(
+  value: string | null
+) {
   if (!value) {
     return "";
   }
 
   const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
     return "";
   }
 
   const offset =
-    date.getTimezoneOffset() * 60_000;
+    date.getTimezoneOffset() *
+    60_000;
 
-  return new Date(date.getTime() - offset)
+  return new Date(
+    date.getTime() - offset
+  )
     .toISOString()
     .slice(0, 16);
 }
 
-function toIsoDateTime(value: string) {
+function toIsoDateTime(
+  value: string
+) {
   if (!value) {
     return null;
   }
 
-  const date = new Date(value);
+  const date =
+    new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
     return null;
   }
 
@@ -60,31 +91,39 @@ export default function PublicationEditor({
   publication,
   label,
 }: PublicationEditorProps) {
-  const [title, setTitle] = useState(
-    publication.title ?? ""
-  );
+  const [title, setTitle] =
+    useState(
+      publication.title ?? ""
+    );
 
-  const [content, setContent] = useState(
-    publication.content
-  );
+  const [content, setContent] =
+    useState(
+      publication.content
+    );
 
   const [status, setStatus] =
     useState<PublicationStatus>(
       publication.status
     );
 
-  const [scheduledAt, setScheduledAt] =
-    useState(
-      toLocalDateTimeValue(
-        publication.scheduled_at
-      )
-    );
-
-  const [slug, setSlug] = useState(
-    publication.slug ?? ""
+  const [
+    scheduledAt,
+    setScheduledAt,
+  ] = useState(
+    toLocalDateTimeValue(
+      publication.scheduled_at
+    )
   );
 
-  const [seoTitle, setSeoTitle] = useState(
+  const [slug, setSlug] =
+    useState(
+      publication.slug ?? ""
+    );
+
+  const [
+    seoTitle,
+    setSeoTitle,
+  ] = useState(
     publication.seo_title ?? ""
   );
 
@@ -92,47 +131,53 @@ export default function PublicationEditor({
     metaDescription,
     setMetaDescription,
   ] = useState(
-    publication.meta_description ?? ""
+    publication.meta_description ??
+      ""
   );
 
-  const [subject, setSubject] = useState(
-    publication.subject ?? ""
-  );
-
-  const [previewText, setPreviewText] =
+  const [subject, setSubject] =
     useState(
-      publication.preview_text ?? ""
+      publication.subject ?? ""
     );
+
+  const [
+    previewText,
+    setPreviewText,
+  ] = useState(
+    publication.preview_text ??
+      ""
+  );
 
   const [
     callToAction,
     setCallToAction,
   ] = useState(
-    publication.call_to_action ?? ""
+    publication.call_to_action ??
+      ""
   );
 
-  const [linkUrl, setLinkUrl] = useState(
+  const [
+    linkUrl,
+    setLinkUrl,
+  ] = useState(
     publication.link_url ?? ""
   );
 
-  const [hashtags, setHashtags] = useState(
+  const [
+    hashtags,
+    setHashtags,
+  ] = useState(
     publication.hashtags ?? ""
   );
 
-  const [isSaving, setIsSaving] =
-    useState(false);
-
-  const [isGenerating, setIsGenerating] =
-    useState(false);
-
   const [
-    isPublishingWordPressDraft,
-    setIsPublishingWordPressDraft,
+    isSaving,
+    setIsSaving,
   ] = useState(false);
 
   const [
-    isPublishingWordPressLive,
-    setIsPublishingWordPressLive,
+    isGenerating,
+    setIsGenerating,
   ] = useState(false);
 
   const [
@@ -145,14 +190,26 @@ export default function PublicationEditor({
     setIsPublishingFacebook,
   ] = useState(false);
 
-  const [message, setMessage] =
-    useState<string | null>(null);
+  const [
+    message,
+    setMessage,
+  ] = useState<
+    string | null
+  >(null);
 
-  const [error, setError] =
-    useState<string | null>(null);
+  const [
+    error,
+    setError,
+  ] = useState<
+    string | null
+  >(null);
 
   const channel =
     publication.channel as PublicationChannel;
+
+  useEffect(() => {
+    syncFields(publication);
+  }, [publication]);
 
   async function savePublication() {
     if (
@@ -163,6 +220,7 @@ export default function PublicationEditor({
       setError(
         "Choisis une date et une heure de publication."
       );
+
       return;
     }
 
@@ -171,37 +229,41 @@ export default function PublicationEditor({
     setError(null);
 
     try {
-      const response = await fetch(
-        `/api/publications/${publication.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            title,
-            content,
-            status,
-            scheduled_at:
-              status === "scheduled"
-                ? toIsoDateTime(
-                    scheduledAt
-                  )
-                : null,
-            slug,
-            seo_title: seoTitle,
-            meta_description:
-              metaDescription,
-            subject,
-            preview_text: previewText,
-            call_to_action:
-              callToAction,
-            link_url: linkUrl,
-            hashtags,
-          }),
-        }
-      );
+      const response =
+        await fetch(
+          `/api/publications/${publication.id}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              title,
+              content,
+              status,
+              scheduled_at:
+                status ===
+                "scheduled"
+                  ? toIsoDateTime(
+                      scheduledAt
+                    )
+                  : null,
+              slug,
+              seo_title:
+                seoTitle,
+              meta_description:
+                metaDescription,
+              subject,
+              preview_text:
+                previewText,
+              call_to_action:
+                callToAction,
+              link_url: linkUrl,
+              hashtags,
+            }),
+          }
+        );
 
       const result =
         await response.json();
@@ -216,8 +278,13 @@ export default function PublicationEditor({
         );
       }
 
-      syncFields(result.publication);
-      setMessage("Enregistré.");
+      syncFields(
+        result.publication
+      );
+
+      setMessage(
+        "Enregistré."
+      );
     } catch (saveError) {
       setError(
         saveError instanceof Error
@@ -231,7 +298,8 @@ export default function PublicationEditor({
 
   async function generatePublication() {
     const confirmed =
-      content.trim().length === 0 ||
+      content.trim().length ===
+        0 ||
       window.confirm(
         `Le contenu actuel de ${label} sera remplacé par une nouvelle proposition. Continuer ?`
       );
@@ -245,12 +313,13 @@ export default function PublicationEditor({
     setError(null);
 
     try {
-      const response = await fetch(
-        `/api/publications/${publication.id}/generate`,
-        {
-          method: "POST",
-        }
-      );
+      const response =
+        await fetch(
+          `/api/publications/${publication.id}/generate`,
+          {
+            method: "POST",
+          }
+        );
 
       const result =
         await response.json();
@@ -265,14 +334,19 @@ export default function PublicationEditor({
         );
       }
 
-      syncFields(result.publication);
+      syncFields(
+        result.publication
+      );
 
       setMessage(
         "Nouvelle proposition générée et enregistrée."
       );
-    } catch (generationError) {
+    } catch (
+      generationError
+    ) {
       setError(
-        generationError instanceof Error
+        generationError instanceof
+          Error
           ? generationError.message
           : "Une erreur est survenue."
       );
@@ -281,63 +355,27 @@ export default function PublicationEditor({
     }
   }
 
-  async function saveWebsiteBeforeWordPress() {
-    const response = await fetch(
-      `/api/publications/${publication.id}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-        body: JSON.stringify({
-          title,
-          content,
-          status,
-          slug,
-          seo_title: seoTitle,
-          meta_description:
-            metaDescription,
-          link_url: linkUrl,
-        }),
-      }
-    );
-
-    const result =
-      await response.json();
-
-    if (
-      !response.ok ||
-      !result.success
-    ) {
-      throw new Error(
-        result.message ??
-          "Impossible d’enregistrer l’article."
-      );
-    }
-
-    syncFields(result.publication);
-  }
-
   async function saveBrevoBeforeDraft() {
-    const response = await fetch(
-      `/api/publications/${publication.id}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-        body: JSON.stringify({
-          title,
-          content,
-          status,
-          subject,
-          preview_text: previewText,
-          link_url: linkUrl,
-        }),
-      }
-    );
+    const response =
+      await fetch(
+        `/api/publications/${publication.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            title,
+            content,
+            status,
+            subject,
+            preview_text:
+              previewText,
+            link_url: linkUrl,
+          }),
+        }
+      );
 
     const result =
       await response.json();
@@ -352,25 +390,28 @@ export default function PublicationEditor({
       );
     }
 
-    syncFields(result.publication);
+    syncFields(
+      result.publication
+    );
   }
 
   async function saveFacebookBeforePublish() {
-    const response = await fetch(
-      `/api/publications/${publication.id}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-        body: JSON.stringify({
-          content,
-          status,
-          link_url: linkUrl,
-        }),
-      }
-    );
+    const response =
+      await fetch(
+        `/api/publications/${publication.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            content,
+            status,
+            link_url: linkUrl,
+          }),
+        }
+      );
 
     const result =
       await response.json();
@@ -385,123 +426,9 @@ export default function PublicationEditor({
       );
     }
 
-    syncFields(result.publication);
-  }
-
-  async function sendToWordPressDraft() {
-    const confirmed =
-      window.confirm(
-        "Créer ou mettre à jour le brouillon WordPress avec ce contenu ?"
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
-    setIsPublishingWordPressDraft(true);
-    setMessage(null);
-    setError(null);
-
-    try {
-      await saveWebsiteBeforeWordPress();
-
-      const response = await fetch(
-        `/api/publications/${publication.id}/publish-wordpress`,
-        {
-          method: "POST",
-        }
-      );
-
-      const result =
-        await response.json();
-
-      if (
-        !response.ok ||
-        !result.success
-      ) {
-        throw new Error(
-          result.message ??
-            "Impossible de traiter le brouillon WordPress."
-        );
-      }
-
-      if (result.publication) {
-        syncFields(
-          result.publication
-        );
-      }
-
-      setMessage(
-        result.action === "updated"
-          ? "Brouillon WordPress mis à jour."
-          : "Brouillon WordPress créé."
-      );
-    } catch (publishError) {
-      setError(
-        publishError instanceof Error
-          ? publishError.message
-          : "Une erreur est survenue."
-      );
-    } finally {
-      setIsPublishingWordPressDraft(false);
-    }
-  }
-
-  async function publishWordPressLive() {
-    const confirmed =
-      window.confirm(
-        "Publier maintenant cet article sur lbmedia.fr ? Cette action le rendra visible publiquement."
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
-    setIsPublishingWordPressLive(true);
-    setMessage(null);
-    setError(null);
-
-    try {
-      await saveWebsiteBeforeWordPress();
-
-      const response = await fetch(
-        `/api/publications/${publication.id}/publish-wordpress-live`,
-        {
-          method: "POST",
-        }
-      );
-
-      const result =
-        await response.json();
-
-      if (
-        !response.ok ||
-        !result.success
-      ) {
-        throw new Error(
-          result.message ??
-            "Impossible de publier l’article sur WordPress."
-        );
-      }
-
-      if (result.publication) {
-        syncFields(
-          result.publication
-        );
-      }
-
-      setMessage(
-        "Article publié sur WordPress."
-      );
-    } catch (publishError) {
-      setError(
-        publishError instanceof Error
-          ? publishError.message
-          : "Une erreur est survenue."
-      );
-    } finally {
-      setIsPublishingWordPressLive(false);
-    }
+    syncFields(
+      result.publication
+    );
   }
 
   async function createBrevoDraft() {
@@ -514,19 +441,23 @@ export default function PublicationEditor({
       return;
     }
 
-    setIsCreatingBrevoDraft(true);
+    setIsCreatingBrevoDraft(
+      true
+    );
+
     setMessage(null);
     setError(null);
 
     try {
       await saveBrevoBeforeDraft();
 
-      const response = await fetch(
-        `/api/publications/${publication.id}/create-brevo-draft`,
-        {
-          method: "POST",
-        }
-      );
+      const response =
+        await fetch(
+          `/api/publications/${publication.id}/create-brevo-draft`,
+          {
+            method: "POST",
+          }
+        );
 
       const result =
         await response.json();
@@ -555,7 +486,9 @@ export default function PublicationEditor({
           : "Une erreur est survenue."
       );
     } finally {
-      setIsCreatingBrevoDraft(false);
+      setIsCreatingBrevoDraft(
+        false
+      );
     }
   }
 
@@ -569,19 +502,23 @@ export default function PublicationEditor({
       return;
     }
 
-    setIsPublishingFacebook(true);
+    setIsPublishingFacebook(
+      true
+    );
+
     setMessage(null);
     setError(null);
 
     try {
       await saveFacebookBeforePublish();
 
-      const response = await fetch(
-        `/api/publications/${publication.id}/publish-facebook`,
-        {
-          method: "POST",
-        }
-      );
+      const response =
+        await fetch(
+          `/api/publications/${publication.id}/publish-facebook`,
+          {
+            method: "POST",
+          }
+        );
 
       const result =
         await response.json();
@@ -596,7 +533,9 @@ export default function PublicationEditor({
         );
       }
 
-      if (result.publication) {
+      if (
+        result.publication
+      ) {
         syncFields(
           result.publication
         );
@@ -605,14 +544,19 @@ export default function PublicationEditor({
       setMessage(
         "Publication Facebook effectuée."
       );
-    } catch (facebookError) {
+    } catch (
+      facebookError
+    ) {
       setError(
-        facebookError instanceof Error
+        facebookError instanceof
+          Error
           ? facebookError.message
           : "Une erreur est survenue."
       );
     } finally {
-      setIsPublishingFacebook(false);
+      setIsPublishingFacebook(
+        false
+      );
     }
   }
 
@@ -620,11 +564,13 @@ export default function PublicationEditor({
     updatedPublication: Publication
   ) {
     setTitle(
-      updatedPublication.title ?? ""
+      updatedPublication.title ??
+        ""
     );
 
     setContent(
-      updatedPublication.content ?? ""
+      updatedPublication.content ??
+        ""
     );
 
     setStatus(
@@ -638,11 +584,13 @@ export default function PublicationEditor({
     );
 
     setSlug(
-      updatedPublication.slug ?? ""
+      updatedPublication.slug ??
+        ""
     );
 
     setSeoTitle(
-      updatedPublication.seo_title ?? ""
+      updatedPublication.seo_title ??
+        ""
     );
 
     setMetaDescription(
@@ -651,7 +599,8 @@ export default function PublicationEditor({
     );
 
     setSubject(
-      updatedPublication.subject ?? ""
+      updatedPublication.subject ??
+        ""
     );
 
     setPreviewText(
@@ -665,24 +614,21 @@ export default function PublicationEditor({
     );
 
     setLinkUrl(
-      updatedPublication.link_url ?? ""
+      updatedPublication.link_url ??
+        ""
     );
 
     setHashtags(
-      updatedPublication.hashtags ?? ""
+      updatedPublication.hashtags ??
+        ""
     );
   }
 
   const isBusy =
     isSaving ||
     isGenerating ||
-    isPublishingWordPressDraft ||
-    isPublishingWordPressLive ||
     isCreatingBrevoDraft ||
     isPublishingFacebook;
-
-  const hasWordPressPost =
-    Boolean(publication.wordpress_post_id);
 
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -731,10 +677,12 @@ export default function PublicationEditor({
         </select>
       </div>
 
-      {status === "scheduled" ? (
+      {status ===
+      "scheduled" ? (
         <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
           <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Date et heure de publication
+            Date et heure de
+            publication
           </label>
 
           <input
@@ -752,45 +700,13 @@ export default function PublicationEditor({
       ) : null}
 
       <div className="mt-5 flex flex-wrap justify-end gap-3">
-        {channel === "website" ? (
-          <>
-            <button
-              type="button"
-              onClick={
-                sendToWordPressDraft
-              }
-              disabled={isBusy}
-              className="rounded-xl border border-blue-300 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-800 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isPublishingWordPressDraft
-                ? "Envoi vers WordPress..."
-                : hasWordPressPost
-                  ? "Mettre à jour le brouillon WordPress"
-                  : "Envoyer vers WordPress en brouillon"}
-            </button>
-
-            {hasWordPressPost &&
-            status !== "published" ? (
-              <button
-                type="button"
-                onClick={
-                  publishWordPressLive
-                }
-                disabled={isBusy}
-                className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isPublishingWordPressLive
-                  ? "Publication..."
-                  : "Publier sur WordPress"}
-              </button>
-            ) : null}
-          </>
-        ) : null}
-
-        {channel === "brevo" ? (
+        {channel ===
+        "brevo" ? (
           <button
             type="button"
-            onClick={createBrevoDraft}
+            onClick={
+              createBrevoDraft
+            }
             disabled={isBusy}
             className="rounded-xl border border-orange-300 bg-orange-50 px-4 py-2.5 text-sm font-semibold text-orange-800 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -800,11 +716,15 @@ export default function PublicationEditor({
           </button>
         ) : null}
 
-        {channel === "facebook" &&
-        status !== "published" ? (
+        {channel ===
+          "facebook" &&
+        status !==
+          "published" ? (
           <button
             type="button"
-            onClick={publishFacebook}
+            onClick={
+              publishFacebook
+            }
             disabled={isBusy}
             className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -829,46 +749,8 @@ export default function PublicationEditor({
       </div>
 
       <div className="mt-5 grid gap-4">
-        {channel === "website" ? (
-          <>
-            <Field
-              label="Titre de l’article"
-              value={title}
-              onChange={setTitle}
-            />
-
-            <TextArea
-              label="Article"
-              value={content}
-              onChange={setContent}
-              rows={14}
-            />
-
-            <Field
-              label="Slug"
-              value={slug}
-              onChange={setSlug}
-              placeholder="exemple-actualite-lbmedia"
-            />
-
-            <Field
-              label="Titre SEO"
-              value={seoTitle}
-              onChange={setSeoTitle}
-            />
-
-            <TextArea
-              label="Méta-description"
-              value={metaDescription}
-              onChange={
-                setMetaDescription
-              }
-              rows={3}
-            />
-          </>
-        ) : null}
-
-        {channel === "brevo" ? (
+        {channel ===
+        "brevo" ? (
           <>
             <Field
               label="Objet de l’email"
@@ -928,7 +810,8 @@ export default function PublicationEditor({
           </>
         ) : null}
 
-        {channel === "linkedin" ? (
+        {channel ===
+        "linkedin" ? (
           <>
             <TextArea
               label="Post LinkedIn"
@@ -953,7 +836,8 @@ export default function PublicationEditor({
           </>
         ) : null}
 
-        {channel === "facebook" ? (
+        {channel ===
+        "facebook" ? (
           <>
             <TextArea
               label="Post Facebook"
@@ -987,7 +871,9 @@ export default function PublicationEditor({
       <div className="mt-5 flex justify-end">
         <button
           type="button"
-          onClick={savePublication}
+          onClick={
+            savePublication
+          }
           disabled={isBusy}
           className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
@@ -1028,7 +914,9 @@ function Field({
             event.target.value
           )
         }
-        placeholder={placeholder}
+        placeholder={
+          placeholder
+        }
         className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-950"
       />
     </div>

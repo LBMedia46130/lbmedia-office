@@ -17,31 +17,50 @@ type NewsPageProps = {
   }>;
 };
 
-const channels: {
+const allChannels: {
   key: PublicationChannel;
   label: string;
 }[] = [
-  { key: "website", label: "Site Web" },
-  { key: "brevo", label: "Brevo" },
+  {
+    key: "website",
+    label: "Site Web",
+  },
+  {
+    key: "brevo",
+    label: "Brevo",
+  },
   {
     key: "google_business",
     label: "Google Business",
   },
-  { key: "linkedin", label: "LinkedIn" },
-  { key: "facebook", label: "Facebook" },
+  {
+    key: "linkedin",
+    label: "LinkedIn",
+  },
+  {
+    key: "facebook",
+    label: "Facebook",
+  },
 ];
+
+const visibleChannels = allChannels.filter(
+  (channel) =>
+    channel.key !== "website"
+);
 
 export default async function NewsPage({
   params,
 }: NewsPageProps) {
   const { id } = await params;
 
-  const { data: news, error: newsError } =
-    await supabaseAdmin
-      .from("news")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
+  const {
+    data: news,
+    error: newsError,
+  } = await supabaseAdmin
+    .from("news")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
 
   if (newsError) {
     throw new Error(
@@ -69,31 +88,44 @@ export default async function NewsPage({
 
   const existingChannels = new Set(
     (existingPublications ?? []).map(
-      (publication) => publication.channel
+      (publication) =>
+        publication.channel
     )
   );
 
-  const missingPublications = channels
-    .filter(
-      (channel) =>
-        !existingChannels.has(channel.key)
-    )
-    .map((channel) => ({
-      news_id: id,
-      channel: channel.key,
-      title: news.title,
-      content: news.content,
-      status: "draft",
-    }));
+  const missingPublications =
+    allChannels
+      .filter(
+        (channel) =>
+          !existingChannels.has(
+            channel.key
+          )
+      )
+      .map((channel) => ({
+        news_id: id,
+        channel: channel.key,
+        title:
+          channel.key === "website"
+            ? news.title
+            : null,
+        content: "",
+        status: "draft",
+      }));
 
-  if (missingPublications.length > 0) {
+  if (
+    missingPublications.length > 0
+  ) {
     const { error: upsertError } =
       await supabaseAdmin
         .from("publications")
-        .upsert(missingPublications, {
-          onConflict: "news_id,channel",
-          ignoreDuplicates: true,
-        });
+        .upsert(
+          missingPublications,
+          {
+            onConflict:
+              "news_id,channel",
+            ignoreDuplicates: true,
+          }
+        );
 
     if (upsertError) {
       throw new Error(
@@ -119,8 +151,33 @@ export default async function NewsPage({
     );
   }
 
+  const websitePublication = (
+    publications ?? []
+  ).find(
+    (publication: Publication) =>
+      publication.channel === "website"
+  );
+
+  if (!websitePublication) {
+    throw new Error(
+      "La passerelle WordPress est introuvable."
+    );
+  }
+
+  const publicationTargets = (
+    publications ?? []
+  ).map(
+    (
+      publication: Publication
+    ) => ({
+      id: publication.id,
+      channel:
+        publication.channel,
+    })
+  );
+
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-10">
+    <main className="min-h-screen bg-slate-50 px-6 py-8">
       <div className="mx-auto max-w-5xl">
         <Link
           href="/"
@@ -139,13 +196,24 @@ export default async function NewsPage({
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Rédige le contenu de référence puis adapte chaque
-            publication à son support.
+            L’actualité est l’article
+            principal destiné au site
+            LBMedia. Pénélope prépare
+            ensuite ses déclinaisons
+            pour les autres supports.
           </p>
         </div>
 
         <div className="mt-8">
-          <NewsEditor news={news} />
+          <NewsEditor
+            news={news}
+            publications={
+              publicationTargets
+            }
+            websitePublication={
+              websitePublication
+            }
+          />
         </div>
 
         <section className="mt-10">
@@ -154,31 +222,43 @@ export default async function NewsPage({
           </h2>
 
           <p className="mt-2 text-sm text-slate-600">
-            Chaque version est indépendante et peut être
-            adaptée à son canal.
+            Versions adaptées de
+            l’actualité pour chaque
+            support de communication.
           </p>
 
           <div className="mt-6 grid gap-5">
-            {channels.map((channel) => {
-              const publication = (
-                publications ?? []
-              ).find(
-                (item: Publication) =>
-                  item.channel === channel.key
-              );
+            {visibleChannels.map(
+              (channel) => {
+                const publication = (
+                  publications ?? []
+                ).find(
+                  (
+                    item: Publication
+                  ) =>
+                    item.channel ===
+                    channel.key
+                );
 
-              if (!publication) {
-                return null;
+                if (!publication) {
+                  return null;
+                }
+
+                return (
+                  <PublicationEditor
+                    key={
+                      publication.id
+                    }
+                    publication={
+                      publication
+                    }
+                    label={
+                      channel.label
+                    }
+                  />
+                );
               }
-
-              return (
-                <PublicationEditor
-                  key={publication.id}
-                  publication={publication}
-                  label={channel.label}
-                />
-              );
-            })}
+            )}
           </div>
         </section>
       </div>
