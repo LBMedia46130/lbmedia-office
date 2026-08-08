@@ -61,12 +61,47 @@ export type Publication = {
   id: string;
   news_id: string;
   channel: PublicationChannel;
+
   title: string | null;
   content: string;
+
   status: PublicationStatus;
+
+  slug: string | null;
+  seo_title: string | null;
+  meta_description: string | null;
+
+  subject: string | null;
+  preview_text: string | null;
+
+  call_to_action: string | null;
+  link_url: string | null;
+  hashtags: string | null;
+
   scheduled_at: string | null;
   published_at: string | null;
   published_url: string | null;
+
   created_at: string;
   updated_at: string;
+};
+
+export type UpdatePublicationInput = {
+  title?: string | null;
+  content?: string;
+
+  status?: PublicationStatus;
+
+  slug?: string | null;
+  seo_title?: string | null;
+  meta_description?: string | null;
+
+  subject?: string | null;
+  preview_text?: string | null;
+
+  call_to_action?: string | null;
+  link_url?: string | null;
+  hashtags?: string | null;
+
+  scheduled_at?: string | null;
 };
