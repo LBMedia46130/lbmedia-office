@@ -1,0 +1,232 @@
+import { NextResponse } from "next/server";
+
+import {
+  newsStatuses,
+  type UpdateNewsInput,
+} from "@/lib/news";
+
+import { supabaseAdmin } from "@/lib/supabase-admin";
+
+type RouteContext = {
+  params: Promise<{
+    id: string;
+  }>;
+};
+
+export async function GET(
+  _request: Request,
+  context: RouteContext
+) {
+  const { id } = await context.params;
+
+  const { data, error } = await supabaseAdmin
+    .from("news")
+    .select(`
+      *,
+      publications (*)
+    `)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Impossible de récupérer l’actualité.",
+        error: error.message,
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+
+  if (!data) {
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Actualité introuvable.",
+      },
+      {
+        status: 404,
+      }
+    );
+  }
+
+  return NextResponse.json({
+    success: true,
+    news: data,
+  });
+}
+
+export async function PATCH(
+  request: Request,
+  context: RouteContext
+) {
+  const { id } = await context.params;
+
+  let body: UpdateNewsInput;
+
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Les données envoyées sont invalides.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  if (
+    body.status &&
+    !newsStatuses.includes(body.status)
+  ) {
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Le statut de l’actualité est invalide.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  if (
+    body.title !== undefined &&
+    !body.title.trim()
+  ) {
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Le titre de l’actualité ne peut pas être vide.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  const updateData: Record<
+    string,
+    string | null
+  > = {
+    updated_at: new Date().toISOString(),
+  };
+
+  if (body.title !== undefined) {
+    updateData.title = body.title.trim();
+  }
+
+  if (body.content !== undefined) {
+    updateData.content =
+      body.content.trim();
+  }
+
+  if (body.status !== undefined) {
+    updateData.status = body.status;
+  }
+
+  if (body.image_url !== undefined) {
+    updateData.image_url =
+      body.image_url?.trim() || null;
+  }
+
+  if (body.source_url !== undefined) {
+    updateData.source_url =
+      body.source_url?.trim() || null;
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("news")
+    .update(updateData)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Impossible de modifier l’actualité.",
+        error: error.message,
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+
+  if (!data) {
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Actualité introuvable.",
+      },
+      {
+        status: 404,
+      }
+    );
+  }
+
+  return NextResponse.json({
+    success: true,
+    news: data,
+  });
+}
+
+export async function DELETE(
+  _request: Request,
+  context: RouteContext
+) {
+  const { id } = await context.params;
+
+  const { data, error } = await supabaseAdmin
+    .from("news")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Impossible de supprimer l’actualité.",
+        error: error.message,
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+
+  if (!data) {
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Actualité introuvable.",
+      },
+      {
+        status: 404,
+      }
+    );
+  }
+
+  return NextResponse.json({
+    success: true,
+  });
+}
