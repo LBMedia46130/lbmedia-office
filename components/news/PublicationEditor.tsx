@@ -140,6 +140,11 @@ export default function PublicationEditor({
     setIsCreatingBrevoDraft,
   ] = useState(false);
 
+  const [
+    isPublishingFacebook,
+    setIsPublishingFacebook,
+  ] = useState(false);
+
   const [message, setMessage] =
     useState<string | null>(null);
 
@@ -350,6 +355,39 @@ export default function PublicationEditor({
     syncFields(result.publication);
   }
 
+  async function saveFacebookBeforePublish() {
+    const response = await fetch(
+      `/api/publications/${publication.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+        body: JSON.stringify({
+          content,
+          status,
+          link_url: linkUrl,
+        }),
+      }
+    );
+
+    const result =
+      await response.json();
+
+    if (
+      !response.ok ||
+      !result.success
+    ) {
+      throw new Error(
+        result.message ??
+          "Impossible d’enregistrer la publication Facebook."
+      );
+    }
+
+    syncFields(result.publication);
+  }
+
   async function sendToWordPressDraft() {
     const confirmed =
       window.confirm(
@@ -521,6 +559,63 @@ export default function PublicationEditor({
     }
   }
 
+  async function publishFacebook() {
+    const confirmed =
+      window.confirm(
+        "Publier maintenant ce contenu sur la page Facebook LBMedia ? Cette action le rendra visible publiquement."
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsPublishingFacebook(true);
+    setMessage(null);
+    setError(null);
+
+    try {
+      await saveFacebookBeforePublish();
+
+      const response = await fetch(
+        `/api/publications/${publication.id}/publish-facebook`,
+        {
+          method: "POST",
+        }
+      );
+
+      const result =
+        await response.json();
+
+      if (
+        !response.ok ||
+        !result.success
+      ) {
+        throw new Error(
+          result.message ??
+            "Impossible de publier sur Facebook."
+        );
+      }
+
+      if (result.publication) {
+        syncFields(
+          result.publication
+        );
+      }
+
+      setMessage(
+        "Publication Facebook effectuée."
+      );
+    } catch (facebookError) {
+      setError(
+        facebookError instanceof Error
+          ? facebookError.message
+          : "Une erreur est survenue."
+      );
+    } finally {
+      setIsPublishingFacebook(false);
+    }
+  }
+
   function syncFields(
     updatedPublication: Publication
   ) {
@@ -583,7 +678,8 @@ export default function PublicationEditor({
     isGenerating ||
     isPublishingWordPressDraft ||
     isPublishingWordPressLive ||
-    isCreatingBrevoDraft;
+    isCreatingBrevoDraft ||
+    isPublishingFacebook;
 
   const hasWordPressPost =
     Boolean(publication.wordpress_post_id);
@@ -701,6 +797,20 @@ export default function PublicationEditor({
             {isCreatingBrevoDraft
               ? "Création dans Brevo..."
               : "Créer le brouillon dans Brevo"}
+          </button>
+        ) : null}
+
+        {channel === "facebook" &&
+        status !== "published" ? (
+          <button
+            type="button"
+            onClick={publishFacebook}
+            disabled={isBusy}
+            className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isPublishingFacebook
+              ? "Publication Facebook..."
+              : "Publier sur Facebook"}
           </button>
         ) : null}
 
