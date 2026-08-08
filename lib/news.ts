@@ -82,6 +82,8 @@ export type Publication = {
   published_at: string | null;
   published_url: string | null;
 
+  wordpress_post_id: number | null;
+
   created_at: string;
   updated_at: string;
 };

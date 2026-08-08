@@ -53,12 +53,7 @@ export async function POST(
       error: publicationError,
     } = await supabaseAdmin
       .from("publications")
-      .select(`
-        *,
-        news (
-          title
-        )
-      `)
+      .select("*")
       .eq("id", id)
       .maybeSingle();
 
@@ -123,33 +118,42 @@ export async function POST(
         `${username}:${appPassword}`
       ).toString("base64");
 
+    const payload = {
+      title:
+        publication.title ||
+        "Actualité LBMedia",
+      content:
+        publication.content,
+      slug:
+        publication.slug ||
+        undefined,
+      excerpt:
+        publication.meta_description ||
+        undefined,
+      status: "draft",
+    };
+
+    const hasExistingWordPressPost =
+      typeof publication.wordpress_post_id ===
+        "number" &&
+      publication.wordpress_post_id > 0;
+
+    const endpoint =
+      hasExistingWordPressPost
+        ? `${wordpressUrl}/wp-json/wp/v2/posts/${publication.wordpress_post_id}`
+        : `${wordpressUrl}/wp-json/wp/v2/posts`;
+
     const wordpressResponse =
-      await fetch(
-        `${wordpressUrl}/wp-json/wp/v2/posts`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Basic ${authorization}`,
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            title:
-              publication.title ||
-              "Actualité LBMedia",
-            content:
-              publication.content,
-            slug:
-              publication.slug ||
-              undefined,
-            excerpt:
-              publication.meta_description ||
-              undefined,
-            status: "draft",
-          }),
-          cache: "no-store",
-        }
-      );
+      await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${authorization}`,
+          "Content-Type":
+            "application/json",
+        },
+        body: JSON.stringify(payload),
+        cache: "no-store",
+      });
 
     const wordpressData =
       await wordpressResponse.json();
@@ -159,7 +163,9 @@ export async function POST(
         {
           success: false,
           message:
-            "WordPress a refusé la création du brouillon.",
+            hasExistingWordPressPost
+              ? "WordPress a refusé la mise à jour du brouillon."
+              : "WordPress a refusé la création du brouillon.",
           status:
             wordpressResponse.status,
           details:
@@ -178,6 +184,8 @@ export async function POST(
     } = await supabaseAdmin
       .from("publications")
       .update({
+        wordpress_post_id:
+          wordpressData.id,
         published_url:
           wordpressData.link ??
           null,
@@ -193,7 +201,7 @@ export async function POST(
         {
           success: false,
           message:
-            "Le brouillon WordPress a été créé mais LBMedia Office n’a pas pu enregistrer son URL.",
+            "Le brouillon WordPress a été traité mais LBMedia Office n’a pas pu enregistrer ses informations.",
           error:
             updateError.message,
           wordpress_post_id:
@@ -210,8 +218,14 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
+      action:
+        hasExistingWordPressPost
+          ? "updated"
+          : "created",
       message:
-        "Brouillon WordPress créé.",
+        hasExistingWordPressPost
+          ? "Brouillon WordPress mis à jour."
+          : "Brouillon WordPress créé.",
       wordpress_post_id:
         wordpressData.id,
       wordpress_url:
@@ -225,7 +239,7 @@ export async function POST(
       {
         success: false,
         message:
-          "Impossible de créer le brouillon WordPress.",
+          "Impossible de traiter le brouillon WordPress.",
         error:
           error instanceof Error
             ? error.message
