@@ -61,6 +61,13 @@ export default function RootLayout({
                 href="/"
                 className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950"
               >
+                Pilotage
+              </Link>
+
+              <Link
+                href="/news"
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950"
+              >
                 Actualités
               </Link>
 

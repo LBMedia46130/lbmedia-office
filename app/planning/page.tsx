@@ -73,6 +73,7 @@ function formatDate(
   return new Intl.DateTimeFormat(
     "fr-FR",
     {
+      timeZone: "Europe/Paris",
       weekday: "short",
       day: "2-digit",
       month: "short",
@@ -81,6 +82,126 @@ function formatDate(
       minute: "2-digit",
     }
   ).format(new Date(value));
+}
+
+function formatTime(
+  value: string | null
+) {
+  if (!value) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat(
+    "fr-FR",
+    {
+      timeZone: "Europe/Paris",
+      hour: "2-digit",
+      minute: "2-digit",
+    }
+  ).format(new Date(value));
+}
+
+function getParisDateParts(
+  date: Date
+) {
+  const parts =
+    new Intl.DateTimeFormat(
+      "en-CA",
+      {
+        timeZone: "Europe/Paris",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }
+    ).formatToParts(date);
+
+  const year = Number(
+    parts.find(
+      (part) =>
+        part.type === "year"
+    )?.value
+  );
+
+  const month = Number(
+    parts.find(
+      (part) =>
+        part.type === "month"
+    )?.value
+  );
+
+  const day = Number(
+    parts.find(
+      (part) =>
+        part.type === "day"
+    )?.value
+  );
+
+  return {
+    year,
+    month,
+    day,
+  };
+}
+
+function toCalendarNumber(
+  date: Date
+) {
+  const {
+    year,
+    month,
+    day,
+  } = getParisDateParts(date);
+
+  return Date.UTC(
+    year,
+    month - 1,
+    day
+  );
+}
+
+function getDayDifference(
+  value: string
+) {
+  const today =
+    toCalendarNumber(
+      new Date()
+    );
+
+  const target =
+    toCalendarNumber(
+      new Date(value)
+    );
+
+  return Math.round(
+    (target - today) /
+      86_400_000
+  );
+}
+
+function getDaysUntilSunday() {
+  const {
+    year,
+    month,
+    day,
+  } = getParisDateParts(
+    new Date()
+  );
+
+  const utcDate =
+    new Date(
+      Date.UTC(
+        year,
+        month - 1,
+        day
+      )
+    );
+
+  const weekday =
+    utcDate.getUTCDay();
+
+  return weekday === 0
+    ? 0
+    : 7 - weekday;
 }
 
 function statusClasses(
@@ -180,19 +301,76 @@ export default async function PlanningPage() {
         "failed"
     );
 
+  const overdue =
+    scheduled.filter(
+      (publication) =>
+        publication.scheduled_at &&
+        getDayDifference(
+          publication.scheduled_at
+        ) < 0
+    );
+
+  const today =
+    scheduled.filter(
+      (publication) =>
+        publication.scheduled_at &&
+        getDayDifference(
+          publication.scheduled_at
+        ) === 0
+    );
+
+  const daysUntilSunday =
+    getDaysUntilSunday();
+
+  const thisWeek =
+    scheduled.filter(
+      (publication) => {
+        if (
+          !publication.scheduled_at
+        ) {
+          return false;
+        }
+
+        const difference =
+          getDayDifference(
+            publication.scheduled_at
+          );
+
+        return (
+          difference > 0 &&
+          difference <=
+            daysUntilSunday
+        );
+      }
+    );
+
+  const later =
+    scheduled.filter(
+      (publication) => {
+        if (
+          !publication.scheduled_at
+        ) {
+          return false;
+        }
+
+        const difference =
+          getDayDifference(
+            publication.scheduled_at
+          );
+
+        return (
+          difference >
+          daysUntilSunday
+        );
+      }
+    );
+
   return (
     <main className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-6xl px-6 py-10">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div>
-            <Link
-              href="/"
-              className="text-sm text-slate-500 transition hover:text-slate-950"
-            >
-              ← Retour aux actualités
-            </Link>
-
-            <p className="mt-8 text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
               LBMedia Office
             </p>
 
@@ -201,19 +379,18 @@ export default async function PlanningPage() {
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-              Retrouve les contenus
-              prêts, les publications
-              planifiées et
-              l’historique des
-              contenus publiés.
+              Visualise immédiatement
+              ce qui doit être publié
+              aujourd’hui, cette
+              semaine et plus tard.
             </p>
           </div>
 
           <Link
-            href="/"
+            href="/news/new"
             className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
-            Gérer les actualités
+            + Nouvelle actualité
           </Link>
         </div>
 
@@ -234,15 +411,88 @@ export default async function PlanningPage() {
           />
         </section>
 
+        {overdue.length > 0 ? (
+          <PlanningSection
+            title="En retard"
+            description="Ces publications avaient une date prévue qui est maintenant dépassée."
+            publications={overdue}
+            tone="warning"
+          />
+        ) : null}
+
+        <PlanningSection
+          title="Aujourd’hui"
+          description="Publications prévues aujourd’hui."
+          publications={today}
+          emptyMessage="Rien à publier aujourd’hui."
+          highlight
+        />
+
+        <PlanningSection
+          title="Cette semaine"
+          description="Publications prévues d’ici dimanche."
+          publications={thisWeek}
+          emptyMessage="Aucune autre publication prévue cette semaine."
+        />
+
+        <PlanningSection
+          title="Plus tard"
+          description="Publications déjà programmées pour les semaines suivantes."
+          publications={later}
+          emptyMessage="Aucune publication planifiée plus tard."
+        />
+
+        <section className="mt-12">
+          <div>
+            <h2 className="text-xl font-bold text-slate-950">
+              Prêtes à planifier
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Contenus validés qui
+              attendent encore leur
+              date de publication.
+            </p>
+          </div>
+
+          {ready.length === 0 ? (
+            <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
+              <p className="font-semibold text-slate-950">
+                Aucun contenu en attente
+              </p>
+
+              <p className="mt-2 text-sm text-slate-500">
+                Les contenus marqués
+                comme prêts apparaîtront
+                ici.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-5 grid gap-4">
+              {ready.map(
+                (publication) => (
+                  <PublicationRow
+                    key={
+                      publication.id
+                    }
+                    publication={
+                      publication
+                    }
+                  />
+                )
+              )}
+            </div>
+          )}
+        </section>
+
         {invalidScheduled.length >
         0 ? (
-          <section className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5">
-            <p className="font-semibold text-amber-900">
-              Planification à
-              corriger
-            </p>
+          <section className="mt-12 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+            <h2 className="font-bold text-amber-950">
+              Planification à corriger
+            </h2>
 
-            <p className="mt-1 text-sm leading-6 text-amber-800">
+            <p className="mt-1 text-sm text-amber-800">
               {
                 invalidScheduled.length
               }{" "}
@@ -277,12 +527,12 @@ export default async function PlanningPage() {
         ) : null}
 
         {failed.length > 0 ? (
-          <section className="mt-8 rounded-2xl border border-red-200 bg-red-50 p-5">
-            <p className="font-semibold text-red-900">
+          <section className="mt-12 rounded-2xl border border-red-200 bg-red-50 p-5">
+            <h2 className="font-bold text-red-950">
               Publications en échec
-            </p>
+            </h2>
 
-            <p className="mt-1 text-sm leading-6 text-red-800">
+            <p className="mt-1 text-sm text-red-800">
               {
                 failed.length
               }{" "}
@@ -310,109 +560,25 @@ export default async function PlanningPage() {
           </section>
         ) : null}
 
-        <section className="mt-10">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-bold text-slate-950">
-                À venir
-              </h2>
+        <section className="mt-12 pb-10">
+          <div>
+            <h2 className="text-xl font-bold text-slate-950">
+              Dernières publications
+            </h2>
 
-              <p className="mt-1 text-sm text-slate-500">
-                Publications ayant
-                une date de
-                publication.
-              </p>
-            </div>
-
-            <span className="text-sm font-medium text-slate-500">
-              {scheduled.length}{" "}
-              publication
-              {scheduled.length > 1
-                ? "s"
-                : ""}
-            </span>
+            <p className="mt-1 text-sm text-slate-500">
+              Historique récent des
+              contenus effectivement
+              publiés.
+            </p>
           </div>
 
-          {scheduled.length === 0 ? (
-            <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
-              <p className="font-semibold text-slate-950">
-                Rien de planifié
-              </p>
-
-              <p className="mt-2 text-sm text-slate-500">
-                Les contenus auxquels
-                tu attribues une date
-                apparaîtront ici.
-              </p>
-            </div>
-          ) : (
-            <div className="mt-5 grid gap-4">
-              {scheduled.map(
-                (publication) => (
-                  <PublicationRow
-                    key={
-                      publication.id
-                    }
-                    publication={
-                      publication
-                    }
-                  />
-                )
-              )}
-            </div>
-          )}
-        </section>
-
-        <section className="mt-12">
-          <h2 className="text-xl font-bold text-slate-950">
-            Prêtes à planifier
-          </h2>
-
-          <p className="mt-1 text-sm text-slate-500">
-            Contenus validés qui
-            n’ont pas encore de date
-            de publication.
-          </p>
-
-          {ready.length === 0 ? (
-            <p className="mt-5 rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
-              Aucun contenu prêt pour
-              le moment.
-            </p>
-          ) : (
-            <div className="mt-5 grid gap-4">
-              {ready.map(
-                (publication) => (
-                  <PublicationRow
-                    key={
-                      publication.id
-                    }
-                    publication={
-                      publication
-                    }
-                  />
-                )
-              )}
-            </div>
-          )}
-        </section>
-
-        <section className="mt-12 pb-10">
-          <h2 className="text-xl font-bold text-slate-950">
-            Dernières publications
-          </h2>
-
-          <p className="mt-1 text-sm text-slate-500">
-            Historique des contenus
-            réellement marqués comme
-            publiés.
-          </p>
-
           {published.length === 0 ? (
-            <p className="mt-5 rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
-              Aucune publication
-              enregistrée.
-            </p>
+            <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
+              <p className="font-semibold text-slate-950">
+                Aucune publication
+              </p>
+            </div>
           ) : (
             <div className="mt-5 grid gap-4">
               {published
@@ -455,6 +621,76 @@ export default async function PlanningPage() {
   );
 }
 
+function PlanningSection({
+  title,
+  description,
+  publications,
+  emptyMessage,
+  highlight = false,
+  tone = "default",
+}: {
+  title: string;
+  description: string;
+  publications: PlanningPublication[];
+  emptyMessage?: string;
+  highlight?: boolean;
+  tone?: "default" | "warning";
+}) {
+  const sectionClasses =
+    tone === "warning"
+      ? "border-red-200 bg-red-50"
+      : highlight
+        ? "border-blue-200 bg-blue-50"
+        : "border-slate-200 bg-white";
+
+  return (
+    <section
+      className={`mt-10 rounded-2xl border p-6 ${sectionClasses}`}
+    >
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-slate-950">
+            {title}
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-500">
+            {description}
+          </p>
+        </div>
+
+        <span className="text-sm font-semibold text-slate-500">
+          {publications.length}{" "}
+          publication
+          {publications.length > 1
+            ? "s"
+            : ""}
+        </span>
+      </div>
+
+      {publications.length === 0 ? (
+        <p className="mt-5 rounded-xl border border-dashed border-slate-300 bg-white/70 px-5 py-8 text-center text-sm text-slate-500">
+          {emptyMessage ??
+            "Aucune publication."}
+        </p>
+      ) : (
+        <div className="mt-5 grid gap-3">
+          {publications.map(
+            (publication) => (
+              <PublicationRow
+                key={publication.id}
+                publication={
+                  publication
+                }
+                compact
+              />
+            )
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function Counter({
   label,
   value,
@@ -477,8 +713,10 @@ function Counter({
 
 function PublicationRow({
   publication,
+  compact = false,
 }: {
   publication: PlanningPublication;
+  compact?: boolean;
 }) {
   const newsTitle =
     getNewsTitle(
@@ -502,9 +740,13 @@ function PublicationRow({
   return (
     <Link
       href={`/news/${publication.news_id}`}
-      className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow-md"
+      className={`group block rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md ${
+        compact
+          ? "p-4"
+          : "p-5"
+      }`}
     >
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-bold text-slate-950">
@@ -528,7 +770,7 @@ function PublicationRow({
             </span>
           </div>
 
-          <h3 className="mt-3 font-semibold text-slate-900">
+          <h3 className="mt-2 font-semibold text-slate-900">
             {displayTitle}
           </h3>
 
@@ -540,13 +782,27 @@ function PublicationRow({
           ) : null}
         </div>
 
-        <div className="text-right">
-          <p className="text-sm font-semibold text-slate-800">
-            {formatDate(date)}
-          </p>
+        <div className="shrink-0 text-right">
+          {publication.status ===
+            "scheduled" &&
+          date ? (
+            <>
+              <p className="text-lg font-bold text-slate-950">
+                {formatTime(date)}
+              </p>
+
+              <p className="mt-1 text-xs text-slate-500">
+                {formatDate(date)}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm font-semibold text-slate-800">
+              {formatDate(date)}
+            </p>
+          )}
 
           <p className="mt-2 text-xs font-medium text-slate-400 transition group-hover:text-slate-700">
-            Ouvrir l’actualité →
+            Ouvrir →
           </p>
         </div>
       </div>
