@@ -135,6 +135,11 @@ export default function PublicationEditor({
     setIsPublishingWordPressLive,
   ] = useState(false);
 
+  const [
+    isCreatingBrevoDraft,
+    setIsCreatingBrevoDraft,
+  ] = useState(false);
+
   const [message, setMessage] =
     useState<string | null>(null);
 
@@ -309,6 +314,42 @@ export default function PublicationEditor({
     syncFields(result.publication);
   }
 
+  async function saveBrevoBeforeDraft() {
+    const response = await fetch(
+      `/api/publications/${publication.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+        body: JSON.stringify({
+          title,
+          content,
+          status,
+          subject,
+          preview_text: previewText,
+          link_url: linkUrl,
+        }),
+      }
+    );
+
+    const result =
+      await response.json();
+
+    if (
+      !response.ok ||
+      !result.success
+    ) {
+      throw new Error(
+        result.message ??
+          "Impossible d’enregistrer la newsletter."
+      );
+    }
+
+    syncFields(result.publication);
+  }
+
   async function sendToWordPressDraft() {
     const confirmed =
       window.confirm(
@@ -425,6 +466,61 @@ export default function PublicationEditor({
     }
   }
 
+  async function createBrevoDraft() {
+    const confirmed =
+      window.confirm(
+        "Créer maintenant un brouillon de campagne Brevo avec cette newsletter ? Aucun email ne sera envoyé."
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsCreatingBrevoDraft(true);
+    setMessage(null);
+    setError(null);
+
+    try {
+      await saveBrevoBeforeDraft();
+
+      const response = await fetch(
+        `/api/publications/${publication.id}/create-brevo-draft`,
+        {
+          method: "POST",
+        }
+      );
+
+      const result =
+        await response.json();
+
+      if (
+        !response.ok ||
+        !result.success
+      ) {
+        throw new Error(
+          result.message ??
+            "Impossible de créer le brouillon Brevo."
+        );
+      }
+
+      setMessage(
+        `Brouillon Brevo créé${
+          result.brevo_campaign_id
+            ? ` — campagne n°${result.brevo_campaign_id}`
+            : ""
+        }.`
+      );
+    } catch (brevoError) {
+      setError(
+        brevoError instanceof Error
+          ? brevoError.message
+          : "Une erreur est survenue."
+      );
+    } finally {
+      setIsCreatingBrevoDraft(false);
+    }
+  }
+
   function syncFields(
     updatedPublication: Publication
   ) {
@@ -486,7 +582,8 @@ export default function PublicationEditor({
     isSaving ||
     isGenerating ||
     isPublishingWordPressDraft ||
-    isPublishingWordPressLive;
+    isPublishingWordPressLive ||
+    isCreatingBrevoDraft;
 
   const hasWordPressPost =
     Boolean(publication.wordpress_post_id);
@@ -592,6 +689,19 @@ export default function PublicationEditor({
               </button>
             ) : null}
           </>
+        ) : null}
+
+        {channel === "brevo" ? (
+          <button
+            type="button"
+            onClick={createBrevoDraft}
+            disabled={isBusy}
+            className="rounded-xl border border-orange-300 bg-orange-50 px-4 py-2.5 text-sm font-semibold text-orange-800 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isCreatingBrevoDraft
+              ? "Création dans Brevo..."
+              : "Créer le brouillon dans Brevo"}
+          </button>
         ) : null}
 
         <button
