@@ -53,6 +53,46 @@ const generationOrder: PublicationChannel[] = [
   "facebook",
 ];
 
+function toLocalDateTimeValue(
+  value: string | null
+) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const offset =
+    date.getTimezoneOffset() *
+    60_000;
+
+  return new Date(
+    date.getTime() - offset
+  )
+    .toISOString()
+    .slice(0, 16);
+}
+
+function toIsoDateTime(
+  value: string
+) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date.toISOString();
+}
+
 export default function NewsEditor({
   news,
   publications,
@@ -68,6 +108,15 @@ export default function NewsEditor({
 
   const [status, setStatus] =
     useState(news.status);
+
+  const [
+    scheduledAt,
+    setScheduledAt,
+  ] = useState(
+    toLocalDateTimeValue(
+      websitePublication.scheduled_at
+    )
+  );
 
   const [imageUrl, setImageUrl] =
     useState(news.image_url ?? "");
@@ -102,6 +151,17 @@ export default function NewsEditor({
   const [error, setError] =
     useState<string | null>(null);
 
+  function validatePlanning() {
+    if (
+      status === "scheduled" &&
+      !scheduledAt
+    ) {
+      throw new Error(
+        "Choisis une date et une heure de publication."
+      );
+    }
+  }
+
   async function saveNews() {
     const cleanTitle =
       title.trim();
@@ -111,6 +171,8 @@ export default function NewsEditor({
         "Le titre est obligatoire."
       );
     }
+
+    validatePlanning();
 
     const response = await fetch(
       `/api/news/${news.id}`,
@@ -149,6 +211,8 @@ export default function NewsEditor({
   }
 
   async function syncWebsitePublication() {
+    validatePlanning();
+
     const response = await fetch(
       `/api/publications/${websitePublication.id}`,
       {
@@ -163,6 +227,12 @@ export default function NewsEditor({
           status,
           link_url:
             sourceUrl.trim() || null,
+          scheduled_at:
+            status === "scheduled"
+              ? toIsoDateTime(
+                  scheduledAt
+                )
+              : null,
         }),
       }
     );
@@ -183,6 +253,20 @@ export default function NewsEditor({
     return result.publication;
   }
 
+  async function saveEverything() {
+    /*
+     * La publication technique WordPress
+     * est enregistrée en premier.
+     *
+     * C'est volontaire : la route news
+     * vérifie qu'une actualité planifiée
+     * possède déjà une date sur sa
+     * publication website.
+     */
+    await syncWebsitePublication();
+    await saveNews();
+  }
+
   async function handleSubmit(
     event: FormEvent
   ) {
@@ -193,11 +277,12 @@ export default function NewsEditor({
     setMessage(null);
 
     try {
-      await saveNews();
-      await syncWebsitePublication();
+      await saveEverything();
 
       setMessage(
-        "Actualité enregistrée."
+        status === "scheduled"
+          ? "Actualité planifiée et enregistrée."
+          : "Actualité enregistrée."
       );
 
       router.refresh();
@@ -269,8 +354,7 @@ export default function NewsEditor({
     setError(null);
 
     try {
-      await saveNews();
-      await syncWebsitePublication();
+      await saveEverything();
 
       for (const channel of generationOrder) {
         const target =
@@ -342,8 +426,7 @@ export default function NewsEditor({
     setError(null);
 
     try {
-      await saveNews();
-      await syncWebsitePublication();
+      await saveEverything();
 
       const response = await fetch(
         `/api/publications/${websitePublication.id}/publish-wordpress`,
@@ -400,8 +483,83 @@ export default function NewsEditor({
     setError(null);
 
     try {
-      await saveNews();
-      await syncWebsitePublication();
+      /*
+       * Une publication immédiate
+       * ne doit pas rester marquée
+       * comme planifiée.
+       */
+      const publicationResponse =
+        await fetch(
+          `/api/publications/${websitePublication.id}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              title: title.trim(),
+              content:
+                content.trim(),
+              status: "ready",
+              scheduled_at: null,
+              link_url:
+                sourceUrl.trim() ||
+                null,
+            }),
+          }
+        );
+
+      const publicationResult =
+        await publicationResponse.json();
+
+      if (
+        !publicationResponse.ok ||
+        !publicationResult.success
+      ) {
+        throw new Error(
+          publicationResult.message ??
+            "Impossible de préparer l’article pour WordPress."
+        );
+      }
+
+      const newsResponse =
+        await fetch(
+          `/api/news/${news.id}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              title:
+                title.trim(),
+              content:
+                content.trim(),
+              status: "ready",
+              image_url:
+                imageUrl.trim() ||
+                null,
+              source_url:
+                sourceUrl.trim() ||
+                null,
+            }),
+          }
+        );
+
+      const newsResult =
+        await newsResponse.json();
+
+      if (
+        !newsResponse.ok ||
+        !newsResult.success
+      ) {
+        throw new Error(
+          newsResult.message ??
+            "Impossible d’enregistrer l’actualité."
+        );
+      }
 
       const response = await fetch(
         `/api/publications/${websitePublication.id}/publish-wordpress-live`,
@@ -422,6 +580,43 @@ export default function NewsEditor({
             "Impossible de publier l’actualité sur WordPress."
         );
       }
+
+      /*
+       * La route WordPress met déjà
+       * la publication website à
+       * "published". On aligne
+       * ensuite news.status.
+       */
+      const syncNewsResponse =
+        await fetch(
+          `/api/news/${news.id}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              status: "published",
+            }),
+          }
+        );
+
+      const syncNewsResult =
+        await syncNewsResponse.json();
+
+      if (
+        !syncNewsResponse.ok ||
+        !syncNewsResult.success
+      ) {
+        throw new Error(
+          syncNewsResult.message ??
+            "L’article est publié mais le statut de l’actualité n’a pas pu être synchronisé."
+        );
+      }
+
+      setStatus("published");
+      setScheduledAt("");
 
       setMessage(
         "Actualité publiée sur WordPress."
@@ -570,12 +765,20 @@ export default function NewsEditor({
           <select
             id="status"
             value={status}
-            onChange={(event) =>
-              setStatus(
+            onChange={(event) => {
+              const nextStatus =
                 event.target
-                  .value as NewsStatus
-              )
-            }
+                  .value as NewsStatus;
+
+              setStatus(nextStatus);
+
+              if (
+                nextStatus !==
+                "scheduled"
+              ) {
+                setScheduledAt("");
+              }
+            }}
             disabled={isBusy}
             className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-slate-950 disabled:opacity-60"
           >
@@ -591,6 +794,37 @@ export default function NewsEditor({
             )}
           </select>
         </div>
+
+        {status === "scheduled" ? (
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+            <label
+              htmlFor="scheduledAt"
+              className="block text-sm font-semibold text-blue-950"
+            >
+              Date et heure de
+              publication WordPress
+            </label>
+
+            <p className="mt-1 text-xs leading-5 text-blue-700">
+              Cette date sera
+              utilisée par le
+              planning éditorial.
+            </p>
+
+            <input
+              id="scheduledAt"
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={(event) =>
+                setScheduledAt(
+                  event.target.value
+                )
+              }
+              disabled={isBusy}
+              className="mt-3 w-full rounded-xl border border-blue-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-blue-700 disabled:opacity-60"
+            />
+          </div>
+        ) : null}
 
         <div>
           <label
@@ -726,7 +960,10 @@ export default function NewsEditor({
         >
           {isSaving
             ? "Enregistrement..."
-            : "Enregistrer"}
+            : status ===
+                "scheduled"
+              ? "Enregistrer la planification"
+              : "Enregistrer"}
         </button>
       </div>
     </form>
@@ -740,7 +977,8 @@ function getChannelLabel(
     PublicationChannel,
     string
   > = {
-    website: "Site Web",
+    website:
+      "Actualité / WordPress",
     brevo: "Brevo",
     google_business:
       "Google Business",

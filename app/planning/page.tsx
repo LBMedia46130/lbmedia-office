@@ -29,7 +29,7 @@ const channelLabels: Record<
   PublicationChannel,
   string
 > = {
-  website: "Site Web",
+  website: "Actualité / WordPress",
   brevo: "Brevo",
   google_business: "Google Business",
   linkedin: "LinkedIn",
@@ -51,13 +51,21 @@ function getNewsTitle(
   relation: PlanningPublication["news"]
 ) {
   if (Array.isArray(relation)) {
-    return relation[0]?.title ?? "Actualité";
+    return (
+      relation[0]?.title ??
+      "Actualité"
+    );
   }
 
-  return relation?.title ?? "Actualité";
+  return (
+    relation?.title ??
+    "Actualité"
+  );
 }
 
-function formatDate(value: string | null) {
+function formatDate(
+  value: string | null
+) {
   if (!value) {
     return "Aucune date";
   }
@@ -112,6 +120,12 @@ export default async function PlanningPage() {
           title
         )
       `)
+      .in("status", [
+        "ready",
+        "scheduled",
+        "published",
+        "failed",
+      ])
       .order("scheduled_at", {
         ascending: true,
         nullsFirst: false,
@@ -124,24 +138,46 @@ export default async function PlanningPage() {
   }
 
   const publications =
-    (data ?? []) as PlanningPublication[];
-
-  const scheduled =
-    publications.filter(
-      (publication) =>
-        publication.status === "scheduled"
-    );
+    (data ??
+      []) as PlanningPublication[];
 
   const ready =
     publications.filter(
       (publication) =>
-        publication.status === "ready"
+        publication.status ===
+        "ready"
+    );
+
+  const scheduled =
+    publications.filter(
+      (publication) =>
+        publication.status ===
+          "scheduled" &&
+        Boolean(
+          publication.scheduled_at
+        )
+    );
+
+  const invalidScheduled =
+    publications.filter(
+      (publication) =>
+        publication.status ===
+          "scheduled" &&
+        !publication.scheduled_at
     );
 
   const published =
     publications.filter(
       (publication) =>
-        publication.status === "published"
+        publication.status ===
+        "published"
+    );
+
+  const failed =
+    publications.filter(
+      (publication) =>
+        publication.status ===
+        "failed"
     );
 
   return (
@@ -165,9 +201,11 @@ export default async function PlanningPage() {
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-              Suis les contenus prêts, les
-              publications programmées et
-              l’historique des contenus publiés.
+              Retrouve les contenus
+              prêts, les publications
+              planifiées et
+              l’historique des
+              contenus publiés.
             </p>
           </div>
 
@@ -181,7 +219,7 @@ export default async function PlanningPage() {
 
         <section className="mt-8 grid gap-4 sm:grid-cols-3">
           <Counter
-            label="Prêtes"
+            label="Prêtes à planifier"
             value={ready.length}
           />
 
@@ -196,6 +234,82 @@ export default async function PlanningPage() {
           />
         </section>
 
+        {invalidScheduled.length >
+        0 ? (
+          <section className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+            <p className="font-semibold text-amber-900">
+              Planification à
+              corriger
+            </p>
+
+            <p className="mt-1 text-sm leading-6 text-amber-800">
+              {
+                invalidScheduled.length
+              }{" "}
+              publication
+              {invalidScheduled.length >
+              1
+                ? "s sont marquées"
+                : " est marquée"}{" "}
+              comme planifiée
+              {invalidScheduled.length >
+              1
+                ? "s"
+                : ""}{" "}
+              sans date.
+            </p>
+
+            <div className="mt-4 grid gap-3">
+              {invalidScheduled.map(
+                (publication) => (
+                  <PublicationRow
+                    key={
+                      publication.id
+                    }
+                    publication={
+                      publication
+                    }
+                  />
+                )
+              )}
+            </div>
+          </section>
+        ) : null}
+
+        {failed.length > 0 ? (
+          <section className="mt-8 rounded-2xl border border-red-200 bg-red-50 p-5">
+            <p className="font-semibold text-red-900">
+              Publications en échec
+            </p>
+
+            <p className="mt-1 text-sm leading-6 text-red-800">
+              {
+                failed.length
+              }{" "}
+              publication
+              {failed.length > 1
+                ? "s nécessitent"
+                : " nécessite"}{" "}
+              ton attention.
+            </p>
+
+            <div className="mt-4 grid gap-3">
+              {failed.map(
+                (publication) => (
+                  <PublicationRow
+                    key={
+                      publication.id
+                    }
+                    publication={
+                      publication
+                    }
+                  />
+                )
+              )}
+            </div>
+          </section>
+        ) : null}
+
         <section className="mt-10">
           <div className="flex items-end justify-between gap-4">
             <div>
@@ -204,13 +318,15 @@ export default async function PlanningPage() {
               </h2>
 
               <p className="mt-1 text-sm text-slate-500">
-                Publications actuellement
-                planifiées.
+                Publications ayant
+                une date de
+                publication.
               </p>
             </div>
 
             <span className="text-sm font-medium text-slate-500">
-              {scheduled.length} publication
+              {scheduled.length}{" "}
+              publication
               {scheduled.length > 1
                 ? "s"
                 : ""}
@@ -224,9 +340,9 @@ export default async function PlanningPage() {
               </p>
 
               <p className="mt-2 text-sm text-slate-500">
-                Les publications auxquelles tu
-                attribues une date apparaîtront
-                ici.
+                Les contenus auxquels
+                tu attribues une date
+                apparaîtront ici.
               </p>
             </div>
           ) : (
@@ -234,7 +350,9 @@ export default async function PlanningPage() {
               {scheduled.map(
                 (publication) => (
                   <PublicationRow
-                    key={publication.id}
+                    key={
+                      publication.id
+                    }
                     publication={
                       publication
                     }
@@ -251,20 +369,24 @@ export default async function PlanningPage() {
           </h2>
 
           <p className="mt-1 text-sm text-slate-500">
-            Contenus validés qui n’ont pas encore
-            de date de publication.
+            Contenus validés qui
+            n’ont pas encore de date
+            de publication.
           </p>
 
           {ready.length === 0 ? (
             <p className="mt-5 rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
-              Aucun contenu prêt pour le moment.
+              Aucun contenu prêt pour
+              le moment.
             </p>
           ) : (
             <div className="mt-5 grid gap-4">
               {ready.map(
                 (publication) => (
                   <PublicationRow
-                    key={publication.id}
+                    key={
+                      publication.id
+                    }
                     publication={
                       publication
                     }
@@ -281,13 +403,15 @@ export default async function PlanningPage() {
           </h2>
 
           <p className="mt-1 text-sm text-slate-500">
-            Historique des contenus marqués comme
+            Historique des contenus
+            réellement marqués comme
             publiés.
           </p>
 
           {published.length === 0 ? (
             <p className="mt-5 rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
-              Aucune publication enregistrée.
+              Aucune publication
+              enregistrée.
             </p>
           ) : (
             <div className="mt-5 grid gap-4">
@@ -309,14 +433,20 @@ export default async function PlanningPage() {
                   );
                 })
                 .slice(0, 10)
-                .map((publication) => (
-                  <PublicationRow
-                    key={publication.id}
-                    publication={
-                      publication
-                    }
-                  />
-                ))}
+                .map(
+                  (
+                    publication
+                  ) => (
+                    <PublicationRow
+                      key={
+                        publication.id
+                      }
+                      publication={
+                        publication
+                      }
+                    />
+                  )
+                )}
             </div>
           )}
         </section>
@@ -350,15 +480,24 @@ function PublicationRow({
 }: {
   publication: PlanningPublication;
 }) {
-  const newsTitle = getNewsTitle(
-    publication.news
-  );
+  const newsTitle =
+    getNewsTitle(
+      publication.news
+    );
 
   const date =
-    publication.status === "published"
+    publication.status ===
+    "published"
       ? publication.published_at ??
         publication.scheduled_at
       : publication.scheduled_at;
+
+  const displayTitle =
+    publication.channel ===
+    "website"
+      ? newsTitle
+      : publication.title ||
+        newsTitle;
 
   return (
     <Link
@@ -390,13 +529,15 @@ function PublicationRow({
           </div>
 
           <h3 className="mt-3 font-semibold text-slate-900">
-            {publication.title ||
-              newsTitle}
+            {displayTitle}
           </h3>
 
-          <p className="mt-1 text-sm text-slate-500">
-            {newsTitle}
-          </p>
+          {publication.channel !==
+          "website" ? (
+            <p className="mt-1 text-sm text-slate-500">
+              {newsTitle}
+            </p>
+          ) : null}
         </div>
 
         <div className="text-right">

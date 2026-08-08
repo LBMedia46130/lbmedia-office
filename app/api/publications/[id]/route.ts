@@ -27,7 +27,8 @@ export async function PATCH(
     return NextResponse.json(
       {
         success: false,
-        message: "Les données envoyées sont invalides.",
+        message:
+          "Les données envoyées sont invalides.",
       },
       {
         status: 400,
@@ -37,12 +38,15 @@ export async function PATCH(
 
   if (
     body.status &&
-    !publicationStatuses.includes(body.status)
+    !publicationStatuses.includes(
+      body.status
+    )
   ) {
     return NextResponse.json(
       {
         success: false,
-        message: "Le statut est invalide.",
+        message:
+          "Le statut est invalide.",
       },
       {
         status: 400,
@@ -50,11 +54,78 @@ export async function PATCH(
     );
   }
 
+  const {
+    data: currentPublication,
+    error: currentPublicationError,
+  } = await supabaseAdmin
+    .from("publications")
+    .select(
+      "id, status, scheduled_at, published_at"
+    )
+    .eq("id", id)
+    .maybeSingle();
+
+  if (currentPublicationError) {
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Impossible de charger la déclinaison.",
+        error:
+          currentPublicationError.message,
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+
+  if (!currentPublication) {
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Déclinaison introuvable.",
+      },
+      {
+        status: 404,
+      }
+    );
+  }
+
+  const nextStatus =
+    body.status ??
+    currentPublication.status;
+
+  const nextScheduledAt =
+    body.scheduled_at !== undefined
+      ? body.scheduled_at
+      : currentPublication.scheduled_at;
+
+  if (
+    nextStatus === "scheduled" &&
+    !nextScheduledAt
+  ) {
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Une publication planifiée doit avoir une date et une heure de publication.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  const now =
+    new Date().toISOString();
+
   const updateData: Record<
     string,
     string | null
   > = {
-    updated_at: new Date().toISOString(),
+    updated_at: now,
   };
 
   if (body.title !== undefined) {
@@ -70,6 +141,28 @@ export async function PATCH(
   if (body.status !== undefined) {
     updateData.status =
       body.status;
+
+    if (
+      body.status === "published"
+    ) {
+      updateData.published_at =
+        currentPublication.published_at ??
+        now;
+    } else if (
+      currentPublication.status ===
+      "published"
+    ) {
+      updateData.published_at =
+        null;
+    }
+
+    if (
+      body.status !== "scheduled" &&
+      body.status !== "published"
+    ) {
+      updateData.scheduled_at =
+        null;
+    }
   }
 
   if (body.slug !== undefined) {
@@ -77,61 +170,82 @@ export async function PATCH(
       body.slug?.trim() || null;
   }
 
-  if (body.seo_title !== undefined) {
+  if (
+    body.seo_title !== undefined
+  ) {
     updateData.seo_title =
-      body.seo_title?.trim() || null;
+      body.seo_title?.trim() ||
+      null;
   }
 
   if (
-    body.meta_description !== undefined
+    body.meta_description !==
+    undefined
   ) {
     updateData.meta_description =
-      body.meta_description?.trim() || null;
+      body.meta_description?.trim() ||
+      null;
   }
 
-  if (body.subject !== undefined) {
+  if (
+    body.subject !== undefined
+  ) {
     updateData.subject =
-      body.subject?.trim() || null;
+      body.subject?.trim() ||
+      null;
   }
 
   if (
     body.preview_text !== undefined
   ) {
     updateData.preview_text =
-      body.preview_text?.trim() || null;
+      body.preview_text?.trim() ||
+      null;
   }
 
   if (
     body.call_to_action !== undefined
   ) {
     updateData.call_to_action =
-      body.call_to_action?.trim() || null;
+      body.call_to_action?.trim() ||
+      null;
   }
 
-  if (body.link_url !== undefined) {
+  if (
+    body.link_url !== undefined
+  ) {
     updateData.link_url =
-      body.link_url?.trim() || null;
+      body.link_url?.trim() ||
+      null;
   }
 
-  if (body.hashtags !== undefined) {
+  if (
+    body.hashtags !== undefined
+  ) {
     updateData.hashtags =
-      body.hashtags?.trim() || null;
+      body.hashtags?.trim() ||
+      null;
   }
 
   if (
     body.scheduled_at !== undefined
   ) {
     updateData.scheduled_at =
-      body.scheduled_at;
+      nextStatus === "scheduled" ||
+      nextStatus === "published"
+        ? body.scheduled_at
+        : null;
   }
 
-  const { data, error } =
-    await supabaseAdmin
-      .from("publications")
-      .update(updateData)
-      .eq("id", id)
-      .select("*")
-      .maybeSingle();
+  const {
+    data,
+    error,
+  } = await supabaseAdmin
+    .from("publications")
+    .update(updateData)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
 
   if (error) {
     return NextResponse.json(
