@@ -132,6 +132,11 @@ export default function PublicationEditor({
   const [isGenerating, setIsGenerating] =
     useState(false);
 
+  const [
+    isPublishingWordPress,
+    setIsPublishingWordPress,
+  ] = useState(false);
+
   const [message, setMessage] =
     useState<string | null>(null);
 
@@ -273,6 +278,97 @@ export default function PublicationEditor({
     }
   }
 
+  async function sendToWordPressDraft() {
+    const confirmed =
+      window.confirm(
+        "Créer maintenant un véritable brouillon sur lbmedia.fr avec ce contenu ?"
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsPublishingWordPress(true);
+    setMessage(null);
+    setError(null);
+
+    try {
+      const saveResponse = await fetch(
+        `/api/publications/${publication.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            title,
+            content,
+            status,
+            slug,
+            seo_title: seoTitle,
+            meta_description:
+              metaDescription,
+            link_url: linkUrl,
+          }),
+        }
+      );
+
+      const saveResult =
+        await saveResponse.json();
+
+      if (
+        !saveResponse.ok ||
+        !saveResult.success
+      ) {
+        throw new Error(
+          saveResult.message ??
+            "Impossible d’enregistrer l’article avant l’envoi vers WordPress."
+        );
+      }
+
+      syncFields(
+        saveResult.publication
+      );
+
+      const response = await fetch(
+        `/api/publications/${publication.id}/publish-wordpress`,
+        {
+          method: "POST",
+        }
+      );
+
+      const result =
+        await response.json();
+
+      if (
+        !response.ok ||
+        !result.success
+      ) {
+        throw new Error(
+          result.message ??
+            "Impossible de créer le brouillon WordPress."
+        );
+      }
+
+      setMessage(
+        `Brouillon WordPress créé${
+          result.wordpress_post_id
+            ? ` — article n°${result.wordpress_post_id}`
+            : ""
+        }.`
+      );
+    } catch (publishError) {
+      setError(
+        publishError instanceof Error
+          ? publishError.message
+          : "Une erreur est survenue."
+      );
+    } finally {
+      setIsPublishingWordPress(false);
+    }
+  }
+
   function syncFields(
     updatedPublication: Publication
   ) {
@@ -330,6 +426,11 @@ export default function PublicationEditor({
     );
   }
 
+  const isBusy =
+    isSaving ||
+    isGenerating ||
+    isPublishingWordPress;
+
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -361,7 +462,8 @@ export default function PublicationEditor({
               setScheduledAt("");
             }
           }}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 outline-none"
+          disabled={isBusy}
+          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 outline-none disabled:opacity-50"
         >
           {statuses.map(
             (option) => (
@@ -391,20 +493,34 @@ export default function PublicationEditor({
                 event.target.value
               )
             }
-            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-950"
+            disabled={isBusy}
+            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-950 disabled:opacity-50"
           />
         </div>
       ) : null}
 
-      <div className="mt-5 flex justify-end">
+      <div className="mt-5 flex flex-wrap justify-end gap-3">
+        {channel === "website" ? (
+          <button
+            type="button"
+            onClick={
+              sendToWordPressDraft
+            }
+            disabled={isBusy}
+            className="rounded-xl border border-blue-300 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-800 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isPublishingWordPress
+              ? "Envoi vers WordPress..."
+              : "Envoyer vers WordPress en brouillon"}
+          </button>
+        ) : null}
+
         <button
           type="button"
           onClick={
             generatePublication
           }
-          disabled={
-            isGenerating || isSaving
-          }
+          disabled={isBusy}
           className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isGenerating
@@ -558,13 +674,13 @@ export default function PublicationEditor({
       </div>
 
       {message ? (
-        <p className="mt-4 text-sm font-medium text-green-700">
+        <p className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
           {message}
         </p>
       ) : null}
 
       {error ? (
-        <p className="mt-4 text-sm font-medium text-red-700">
+        <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
           {error}
         </p>
       ) : null}
@@ -573,10 +689,7 @@ export default function PublicationEditor({
         <button
           type="button"
           onClick={savePublication}
-          disabled={
-            isSaving ||
-            isGenerating
-          }
+          disabled={isBusy}
           className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSaving
