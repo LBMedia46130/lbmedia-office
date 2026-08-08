@@ -82,6 +82,9 @@ export default function PublicationEditor({
   const [isSaving, setIsSaving] =
     useState(false);
 
+  const [isGenerating, setIsGenerating] =
+    useState(false);
+
   const [message, setMessage] =
     useState<string | null>(null);
 
@@ -142,9 +145,59 @@ export default function PublicationEditor({
     }
   }
 
+  async function generatePublication() {
+    const confirmed =
+      content.trim().length === 0 ||
+      window.confirm(
+        `Le contenu actuel de ${label} sera remplacé par une nouvelle proposition. Continuer ?`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsGenerating(true);
+    setMessage(null);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `/api/publications/${publication.id}/generate`,
+        {
+          method: "POST",
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(
+          result.message ??
+            "Impossible de générer le contenu."
+        );
+      }
+
+      setContent(
+        result.publication.content ?? ""
+      );
+
+      setMessage(
+        "Nouvelle proposition générée et enregistrée."
+      );
+    } catch (generationError) {
+      setError(
+        generationError instanceof Error
+          ? generationError.message
+          : "Une erreur est survenue."
+      );
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h3 className="text-lg font-semibold text-slate-950">
             {label}
@@ -174,6 +227,21 @@ export default function PublicationEditor({
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="mt-5 flex justify-end">
+        <button
+          type="button"
+          onClick={generatePublication}
+          disabled={
+            isGenerating || isSaving
+          }
+          className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isGenerating
+            ? "Génération..."
+            : "Générer avec l’IA"}
+        </button>
       </div>
 
       <div className="mt-5 grid gap-4">
@@ -332,8 +400,10 @@ export default function PublicationEditor({
         <button
           type="button"
           onClick={savePublication}
-          disabled={isSaving}
-          className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
+          disabled={
+            isSaving || isGenerating
+          }
+          className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSaving
             ? "Enregistrement..."
