@@ -185,6 +185,11 @@ export default function PublicationEditor({
   ] = useState(false);
 
   const [
+    isMarkingGoogleBusinessPublished,
+    setIsMarkingGoogleBusinessPublished,
+  ] = useState(false);
+
+  const [
     message,
     setMessage,
   ] = useState<
@@ -722,6 +727,63 @@ export default function PublicationEditor({
     }
   }
 
+  async function markGoogleBusinessPublished() {
+    if (channel !== "google_business") {
+      return;
+    }
+
+    if (
+      status !== "ready" &&
+      status !== "scheduled"
+    ) {
+      setMessage(null);
+      setError(
+        "Valide d’abord la publication Google Business."
+      );
+
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        "Confirmer que ce contenu a bien été publié manuellement sur la fiche Google Business LBMedia ?"
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsMarkingGoogleBusinessPublished(
+      true
+    );
+
+    setMessage(null);
+    setError(null);
+
+    try {
+      await updatePublication(
+        "published",
+        scheduledAt
+      );
+
+      setMessage(
+        "Publication Google Business marquée comme publiée."
+      );
+    } catch (
+      googleBusinessError
+    ) {
+      setError(
+        googleBusinessError instanceof Error
+          ? googleBusinessError.message
+          : "Une erreur est survenue."
+      );
+    } finally {
+      setIsMarkingGoogleBusinessPublished(
+        false
+      );
+    }
+  }
+
   async function publishFacebook() {
     if (
       status !== "ready" &&
@@ -875,7 +937,8 @@ export default function PublicationEditor({
     isChangingStatus ||
     isCreatingBrevoDraft ||
     isApprovingBrevoSend ||
-    isPublishingFacebook;
+    isPublishingFacebook ||
+    isMarkingGoogleBusinessPublished;
 
   const canEdit =
     status !== "published";
@@ -1066,6 +1129,23 @@ export default function PublicationEditor({
             {isApprovingBrevoSend
               ? "Autorisation..."
               : "Autoriser l’envoi Brevo"}
+          </button>
+        ) : null}
+
+        {channel === "google_business" &&
+        (status === "ready" ||
+          status === "scheduled") ? (
+          <button
+            type="button"
+            onClick={
+              markGoogleBusinessPublished
+            }
+            disabled={isBusy}
+            className="rounded-xl bg-sky-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isMarkingGoogleBusinessPublished
+              ? "Enregistrement..."
+              : "Marquer comme publié"}
           </button>
         ) : null}
 
