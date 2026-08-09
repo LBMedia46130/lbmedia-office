@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
 
+import { getLbmediaContext } from "@/lib/lbmedia-context";
 import type {
   PublicationChannel,
 } from "@/lib/news";
@@ -34,61 +35,163 @@ const channelInstructions: Record<
   string
 > = {
   website: `
-Prépare l'article destiné au site web LBMedia.
+Le canal "website" sert uniquement de publication technique WordPress.
+
+Si tu dois générer ce contenu :
+- conserve le fond et le ton éditorial de l'actualité source ;
+- ne transforme pas l'article en checklist ou en résumé ;
+- garde une structure naturelle d'article.
 
 Retourne :
-- title : titre éditorial de l'article
-- content : article complet, professionnel, naturel et structuré
-- slug : slug court en minuscules avec des tirets
-- seo_title : titre SEO naturel
-- meta_description : méta-description concise
-
-N'utilise pas de jargon inutile.
-Le contenu doit être utile à une PME/PMI.
+- title : titre éditorial naturel ;
+- content : article complet ;
+- slug : slug court et lisible ;
+- seo_title : titre SEO naturel ;
+- meta_description : méta-description concise et humaine.
 `,
 
   brevo: `
-Prépare une newsletter Brevo courte et engageante.
+Tu prépares une newsletter Brevo.
+
+OBJECTIF
+
+La newsletter ne doit PAS résumer intégralement l'article.
+
+Elle doit :
+- éveiller l'intérêt ;
+- rappeler rapidement le problème ou l'enjeu ;
+- donner 1 ou 2 idées fortes seulement ;
+- donner envie de lire l'article complet ou de contacter LBMedia.
+
+STYLE
+
+- ton direct, naturel et professionnel ;
+- plus personnel qu'un article de blog ;
+- paragraphes courts ;
+- pas de longue liste ;
+- pas de reprise mécanique des intertitres de l'article ;
+- évite les formules commerciales agressives ;
+- évite les objets trop publicitaires.
+
+STRUCTURE CONSEILLÉE
+
+- courte accroche ;
+- 2 à 4 paragraphes ;
+- éventuellement une courte liste si elle apporte vraiment quelque chose ;
+- fin naturelle avec invitation à découvrir le sujet ou à échanger.
 
 Retourne :
-- subject : objet de l'email
-- preview_text : préheader
-- content : contenu de la newsletter
+- subject : objet d'email court, naturel et incitatif sans être racoleur ;
+- preview_text : préheader complémentaire ;
+- content : contenu complet de l'email.
 
-La newsletter doit donner envie de découvrir le sujet
-sans recopier intégralement l'article.
+Le contenu doit pouvoir être utilisé directement dans Brevo après relecture.
 `,
 
   google_business: `
-Prépare une publication Google Business.
+Tu prépares une publication Google Business Profile.
+
+OBJECTIF
+
+Le lecteur doit comprendre en quelques secondes :
+- le sujet ;
+- pourquoi cela peut le concerner ;
+- ce qu'il peut faire ensuite.
+
+Le texte ne doit PAS être un résumé miniature de tout l'article.
+
+Choisis un seul angle fort issu de l'article source.
+
+STYLE
+
+- très clair ;
+- concis ;
+- local et concret lorsque le sujet le permet ;
+- professionnel ;
+- sans jargon ;
+- sans longue liste ;
+- sans succession d'étapes ;
+- sans hashtags ;
+- sans introduction inutile.
+
+Le texte doit rester suffisamment court pour être confortable à lire sur une fiche Google Business.
 
 Retourne :
-- content : texte concis et immédiatement compréhensible
-- call_to_action : appel à l'action court
+- content : publication Google Business concise et directement exploitable ;
+- call_to_action : appel à l'action très court, par exemple "En savoir plus", "Découvrir nos conseils", "Nous contacter".
 
-Le texte doit présenter l'information essentielle
-et inciter naturellement à en savoir plus.
+Ne crée aucun lien : le lien sera géré séparément par LBMedia Office.
 `,
 
   linkedin: `
-Prépare un post LinkedIn professionnel et naturel.
+Tu prépares un post LinkedIn pour LBMedia.
+
+OBJECTIF
+
+Le post doit apporter un point de vue, une observation ou une réflexion professionnelle issue de l'article.
+
+Ne résume PAS l'article paragraphe par paragraphe.
+
+Choisis l'idée la plus intéressante pour un dirigeant de TPE ou PME et développe-la sous forme de publication autonome.
+
+STYLE
+
+- accroche naturelle, sans formule racoleuse ;
+- ton professionnel mais humain ;
+- phrases et paragraphes courts ;
+- pas de structure "1 / 2 / 3" sauf nécessité exceptionnelle ;
+- très peu de listes ;
+- pas d'émojis systématiques ;
+- pas de clichés du type "Et vous ?", "Dans un monde où...", "La clé du succès..." ;
+- pas de langage artificiellement inspirant ;
+- pas de discours commercial direct.
+
+Le post doit donner envie de réfléchir, de réagir ou de lire l'article complet.
+
+HASHTAGS
+
+Ajoute seulement 2 à 4 hashtags maximum.
+
+Ils doivent être réellement pertinents et lisibles.
+Évite les séries de hashtags génériques.
 
 Retourne :
-- content : publication LinkedIn
-- hashtags : quelques hashtags réellement pertinents
-
-Utilise une accroche intéressante, des paragraphes courts
-et évite les clichés marketing ou liés à l'intelligence artificielle.
+- content : post LinkedIn complet ;
+- hashtags : hashtags séparés par des espaces.
 `,
 
   facebook: `
-Prépare une publication Facebook.
+Tu prépares une publication Facebook pour la page LBMedia.
+
+OBJECTIF
+
+Le post doit être accessible immédiatement à un dirigeant de petite entreprise.
+
+Il peut être plus conversationnel que LinkedIn, mais doit rester professionnel.
+
+Ne résume PAS tout l'article.
+
+Choisis un angle simple :
+- une question concrète ;
+- une erreur fréquente ;
+- un conseil utile ;
+- une situation que les entreprises locales rencontrent réellement.
+
+STYLE
+
+- naturel ;
+- chaleureux sans être familier ;
+- paragraphes courts ;
+- peu ou pas de listes ;
+- pas de jargon ;
+- pas de hashtag obligatoire ;
+- pas de formule marketing exagérée ;
+- pas de longue démonstration.
+
+La publication doit fonctionner seule dans le fil Facebook et donner naturellement envie d'en savoir plus.
 
 Retourne :
-- content : texte accessible, naturel et concis
-
-Le ton peut être légèrement plus conversationnel que sur LinkedIn
-tout en restant professionnel.
+- content : publication Facebook complète et directement exploitable.
 `,
 };
 
@@ -145,7 +248,8 @@ export async function POST(
         success: false,
         message:
           "Impossible de charger la publication.",
-        error: publicationError.message,
+        error:
+          publicationError.message,
       },
       {
         status: 500,
@@ -188,11 +292,14 @@ export async function POST(
     );
   }
 
+  const lbmediaContext =
+    getLbmediaContext();
+
   const sourceContent = `
 Titre de l'actualité :
 ${newsRelation.title}
 
-Contenu de référence :
+Article de référence :
 ${newsRelation.content || "Aucun contenu détaillé."}
 
 Lien associé :
@@ -205,18 +312,41 @@ ${newsRelation.source_url || "Aucun lien"}
         model: "gpt-5-mini",
 
         instructions: `
-Tu travailles pour LBMedia, une agence de communication française.
+Tu travailles pour LBMedia.
 
-Tu adaptes une actualité existante à un support de communication précis.
+Voici la connaissance éditoriale permanente de LBMedia :
 
-Règles :
+${lbmediaContext}
+
+Tu dois adapter une actualité existante à un support de communication précis.
+
+PRINCIPE ESSENTIEL
+
+Une déclinaison n'est PAS un résumé automatique de l'article.
+
+Chaque support a :
+- son propre usage ;
+- son propre rythme ;
+- son propre niveau de détail ;
+- son propre objectif.
+
+Tu dois donc sélectionner dans l'article l'angle le plus adapté au canal demandé.
+
+RÈGLES COMMUNES
+
 - écris en français ;
 - respecte strictement les informations du contenu source ;
-- n'invente aucun fait ;
+- n'invente aucun fait, chiffre, étude ou résultat ;
 - écris un contenu directement exploitable ;
-- adopte un style professionnel, naturel et humain ;
-- évite le jargon et les formulations génériques ;
+- adopte le ton LBMedia ;
+- évite le jargon ;
+- évite les formulations génériques ;
+- évite de recopier les mêmes phrases que l'article ;
+- évite de reprendre mécaniquement ses intertitres ;
+- évite les listes si elles ne sont pas nécessaires ;
 - n'ajoute aucune explication sur ton travail.
+
+INSTRUCTIONS SPÉCIFIQUES AU CANAL
 
 ${channelInstructions[channel]}
 
@@ -336,7 +466,8 @@ N'utilise aucun bloc Markdown.
       string,
       string | null
     > = {
-      content: generated.content.trim(),
+      content:
+        generated.content.trim(),
       updated_at:
         new Date().toISOString(),
     };
@@ -361,7 +492,9 @@ N'utilise aucun bloc Markdown.
 
     if (channel === "brevo") {
       updateData.subject =
-        getText(generated.subject);
+        getText(
+          generated.subject
+        );
 
       updateData.preview_text =
         getText(

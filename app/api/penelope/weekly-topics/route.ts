@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
 
+import { getLbmediaContext } from "@/lib/lbmedia-context";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 type WeeklyTopic = {
@@ -37,11 +38,13 @@ export async function POST() {
       error: recentNewsError,
     } = await supabaseAdmin
       .from("news")
-      .select("title")
+      .select(
+        "title, content, status, created_at"
+      )
       .order("created_at", {
         ascending: false,
       })
-      .limit(12);
+      .limit(20);
 
     if (recentNewsError) {
       return NextResponse.json(
@@ -58,20 +61,38 @@ export async function POST() {
       );
     }
 
-    const previousTitles =
-      (recentNews ?? [])
-        .map((item) => item.title)
-        .filter(Boolean);
-
-    const previousTopics =
-      previousTitles.length > 0
-        ? previousTitles
+    const editorialHistory =
+      (recentNews ?? []).length > 0
+        ? (recentNews ?? [])
             .map(
-              (title, index) =>
-                `${index + 1}. ${title}`
+              (
+                item,
+                index
+              ) => {
+                const excerpt =
+                  item.content
+                    ?.trim()
+                    .replace(
+                      /\s+/g,
+                      " "
+                    )
+                    .slice(
+                      0,
+                      320
+                    ) || "Aucun contenu";
+
+                return [
+                  `${index + 1}. ${item.title}`,
+                  `Statut : ${item.status}`,
+                  `Résumé : ${excerpt}`,
+                ].join("\n");
+              }
             )
-            .join("\n")
+            .join("\n\n")
         : "Aucune actualité précédente.";
+
+    const lbmediaContext =
+      getLbmediaContext();
 
     const response =
       await openai.responses.create({
@@ -80,47 +101,44 @@ export async function POST() {
         instructions: `
 Tu es Pénélope, l'assistante éditoriale de LBMedia.
 
-LBMedia est une agence de communication française qui accompagne principalement des PME et entreprises locales.
+Voici la connaissance éditoriale permanente de LBMedia :
 
-Les sujets peuvent notamment concerner :
-- communication locale ;
-- publicité radio ;
-- création et évolution de sites web ;
-- visibilité sur Google ;
-- évolution des usages numériques ;
-- communication des PME ;
-- conseils pratiques tirés de l'expérience d'une agence.
+${lbmediaContext}
 
-Ta mission est de proposer des idées réellement exploitables pour les publications LBMedia de la semaine.
+Ta mission est de proposer des sujets réellement pertinents pour la prochaine communication hebdomadaire de LBMedia.
 
 Règles :
 - écris en français ;
 - propose exactement 3 sujets ;
-- évite les sujets déjà traités récemment ;
-- évite les titres génériques ou trop marketing ;
-- privilégie les sujets evergreen ou directement utiles aux PME ;
-- chaque sujet doit pouvoir devenir une actualité/article LBMedia ;
-- ne prétends pas qu'un événement récent a eu lieu si tu n'en as pas la preuve ;
-- privilégie une approche concrète, professionnelle et accessible ;
-- pas de jargon inutile ;
-- pas de formulations du type "révolutionner", "booster", "dans un monde en constante évolution" ;
-- les trois propositions doivent être suffisamment différentes les unes des autres.
+- tiens compte de l'identité, des activités, du positionnement et du public de LBMedia ;
+- analyse les sujets déjà présents dans l'historique fourni ;
+- évite de proposer un sujet déjà traité récemment sous un angle trop proche ;
+- si un thème mérite d'être repris, trouve un angle clairement différent ;
+- les trois propositions doivent être différentes les unes des autres ;
+- privilégie des sujets evergreen ou réellement utiles aux entreprises locales ;
+- les sujets doivent pouvoir devenir une véritable actualité publiée sur lbmedia.fr ;
+- reste proche des activités réelles de LBMedia ;
+- évite le jargon marketing ;
+- évite les titres racoleurs ;
+- évite les formulations génériques ;
+- n'invente aucune actualité, étude, chiffre ou tendance récente ;
+- ne prétends pas disposer d'informations que le contexte ne fournit pas.
 
 Pour chaque proposition :
 - title : titre éditorial possible ;
-- angle : ce que l'article doit réellement raconter ;
-- reason : pourquoi ce sujet est pertinent pour LBMedia et ses clients.
+- angle : ce que l'article doit réellement expliquer ou défendre ;
+- reason : pourquoi ce sujet est pertinent maintenant dans la ligne éditoriale LBMedia.
 
 Retourne exclusivement un objet JSON valide.
 N'utilise aucun bloc Markdown.
 `,
 
         input: `
-Voici les derniers sujets déjà présents dans LBMedia Office :
+Voici l'historique éditorial actuellement connu dans LBMedia Office :
 
-${previousTopics}
+${editorialHistory}
 
-Propose maintenant 3 nouveaux sujets pour la prochaine communication hebdomadaire de LBMedia.
+À partir de la connaissance LBMedia et de cet historique, propose maintenant 3 sujets pour la prochaine communication hebdomadaire.
 `,
 
         text: {
@@ -153,12 +171,16 @@ Propose maintenant 3 nouveaux sujets pour la prochaine communication hebdomadair
                       "angle",
                       "reason",
                     ],
-                    additionalProperties: false,
+                    additionalProperties:
+                      false,
                   },
                 },
               },
-              required: ["topics"],
-              additionalProperties: false,
+              required: [
+                "topics",
+              ],
+              additionalProperties:
+                false,
             },
           },
         },
@@ -179,7 +201,9 @@ Propose maintenant 3 nouveaux sujets pour la prochaine communication hebdomadair
       ) as WeeklyTopicsResponse;
 
     if (
-      !Array.isArray(result.topics) ||
+      !Array.isArray(
+        result.topics
+      ) ||
       result.topics.length !== 3
     ) {
       throw new Error(
