@@ -205,16 +205,66 @@ export async function POST(
         id?: number;
       } | null;
 
+    const campaignId =
+      campaignData?.id ?? null;
+
+    if (!campaignId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Brevo a créé la campagne mais n'a retourné aucun identifiant.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    const {
+      data: updatedPublication,
+      error: updateError,
+    } = await supabaseAdmin
+      .from("publications")
+      .update({
+        brevo_campaign_id:
+          campaignId,
+        updated_at:
+          new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select("*")
+      .single();
+
+    if (updateError) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Le brouillon Brevo a été créé mais LBMedia Office n'a pas pu enregistrer son identifiant.",
+          error:
+            updateError.message,
+          brevo_campaign_id:
+            campaignId,
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       message:
         "Brouillon de campagne Brevo créé.",
       brevo_campaign_id:
-        campaignData?.id ?? null,
+        campaignId,
       brevo_list_id:
         BREVO_LIST_ID,
       brevo_sender_id:
         BREVO_SENDER_ID,
+      publication:
+        updatedPublication,
     });
   } catch (error) {
     return NextResponse.json(

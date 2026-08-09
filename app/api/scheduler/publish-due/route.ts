@@ -9,8 +9,11 @@ type ScheduledPublication = {
   content: string;
   slug: string | null;
   meta_description: string | null;
+  subject: string | null;
+  preview_text: string | null;
   link_url: string | null;
   wordpress_post_id: number | null;
+  brevo_campaign_id: number | null;
   scheduled_at: string | null;
 };
 
@@ -287,15 +290,6 @@ async function publishFacebook(
   }
 
   if (!response.ok) {
-    console.error(
-      "Scheduled Facebook publication failed",
-      {
-        status:
-          response.status,
-        metaData,
-      }
-    );
-
     throw new Error(
       `Meta a refusé la publication Facebook (${response.status}) : ${formatExternalError(
         metaData
@@ -350,6 +344,104 @@ async function publishFacebook(
     success: true,
     message:
       "Publication Facebook effectuée.",
+  };
+}
+
+async function sendBrevo(
+  publication: ScheduledPublication
+): Promise<PublicationResult> {
+  if (
+    publication.channel !== "brevo"
+  ) {
+    return {
+      id: publication.id,
+      channel: publication.channel,
+      success: false,
+      message:
+        "Canal Brevo invalide.",
+    };
+  }
+
+  const apiKey =
+    process.env.BREVO_API_KEY;
+
+  if (!apiKey) {
+    throw new Error(
+      "La clé API Brevo n'est pas configurée."
+    );
+  }
+
+  if (
+    !publication.brevo_campaign_id
+  ) {
+    throw new Error(
+      "Aucun brouillon Brevo n'existe encore pour cette newsletter."
+    );
+  }
+
+  const response = await fetch(
+    `https://api.brevo.com/v3/emailCampaigns/${publication.brevo_campaign_id}/sendNow`,
+    {
+      method: "POST",
+      headers: {
+        accept:
+          "application/json",
+        "api-key":
+          apiKey,
+      },
+      cache: "no-store",
+    }
+  );
+
+  const rawResponse =
+    await response.text();
+
+  let data: unknown = null;
+
+  try {
+    data = rawResponse
+      ? JSON.parse(rawResponse)
+      : null;
+  } catch {
+    data = rawResponse;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      `Brevo a refusé l'envoi (${response.status}) : ${formatExternalError(
+        data
+      )}`
+    );
+  }
+
+  const publishedAt =
+    new Date().toISOString();
+
+  const {
+    error: updateError,
+  } = await supabaseAdmin
+    .from("publications")
+    .update({
+      status: "published",
+      published_at:
+        publishedAt,
+      updated_at:
+        publishedAt,
+    })
+    .eq("id", publication.id);
+
+  if (updateError) {
+    throw new Error(
+      `Campagne Brevo envoyée, mais statut LBMedia Office non enregistré : ${updateError.message}`
+    );
+  }
+
+  return {
+    id: publication.id,
+    channel: "brevo",
+    success: true,
+    message:
+      "Campagne Brevo envoyée.",
   };
 }
 
@@ -455,8 +547,11 @@ export async function POST(
       content,
       slug,
       meta_description,
+      subject,
+      preview_text,
       link_url,
       wordpress_post_id,
+      brevo_campaign_id,
       scheduled_at
     `)
     .eq(
@@ -472,6 +567,7 @@ export async function POST(
       [
         "website",
         "facebook",
+        "brevo",
       ]
     )
     .order(
@@ -527,6 +623,19 @@ export async function POST(
       ) {
         results.push(
           await publishFacebook(
+            publication
+          )
+        );
+
+        continue;
+      }
+
+      if (
+        publication.channel ===
+        "brevo"
+      ) {
+        results.push(
+          await sendBrevo(
             publication
           )
         );

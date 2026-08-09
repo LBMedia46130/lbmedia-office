@@ -83,6 +83,7 @@ export type Publication = {
   published_url: string | null;
 
   wordpress_post_id: number | null;
+  brevo_campaign_id: number | null;
 
   created_at: string;
   updated_at: string;
