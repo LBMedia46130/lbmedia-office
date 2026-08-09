@@ -21,14 +21,65 @@ type PublicationResult = {
   id: string;
   channel: string;
   success: boolean;
+  blocked?: boolean;
   message: string;
 };
 
-function externalPublishingIsAllowed() {
+function wordpressPublishingIsAllowed() {
   return (
-    process.env.ALLOW_EXTERNAL_PUBLISHING ===
+    process.env.ALLOW_WORDPRESS_PUBLISHING ===
     "true"
   );
+}
+
+function facebookPublishingIsAllowed() {
+  return (
+    process.env.ALLOW_FACEBOOK_PUBLISHING ===
+    "true"
+  );
+}
+
+function brevoPublishingIsAllowed() {
+  return (
+    process.env.ALLOW_BREVO_PUBLISHING ===
+    "true"
+  );
+}
+
+function channelPublishingIsAllowed(
+  channel: string
+) {
+  switch (channel) {
+    case "website":
+      return wordpressPublishingIsAllowed();
+
+    case "facebook":
+      return facebookPublishingIsAllowed();
+
+    case "brevo":
+      return brevoPublishingIsAllowed();
+
+    default:
+      return false;
+  }
+}
+
+function getBlockedMessage(
+  channel: string
+) {
+  switch (channel) {
+    case "website":
+      return "Publication WordPress bloquée par sécurité. ALLOW_WORDPRESS_PUBLISHING doit être défini à true.";
+
+    case "facebook":
+      return "Publication Facebook bloquée par sécurité. ALLOW_FACEBOOK_PUBLISHING doit être défini à true.";
+
+    case "brevo":
+      return "Envoi Brevo bloqué par sécurité. ALLOW_BREVO_PUBLISHING doit être défini à true.";
+
+    default:
+      return "Publication externe bloquée par sécurité.";
+  }
 }
 
 function getWordPressConfig() {
@@ -181,7 +232,8 @@ async function publishWordPress(
     .from("publications")
     .update({
       status: "published",
-      published_at: publishedAt,
+      published_at:
+        publishedAt,
       published_url:
         data?.link ?? null,
       updated_at:
@@ -331,7 +383,8 @@ async function publishFacebook(
     .from("publications")
     .update({
       status: "published",
-      published_at: publishedAt,
+      published_at:
+        publishedAt,
       published_url:
         publishedUrl,
       updated_at:
@@ -516,40 +569,38 @@ export async function POST(
   const schedulerSecret =
     process.env.SCHEDULER_SECRET;
 
-  if (schedulerSecret) {
-    const authorization =
-      request.headers.get(
-        "authorization"
-      );
-
-    if (
-      authorization !==
-      `Bearer ${schedulerSecret}`
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Accès non autorisé.",
-        },
-        {
-          status: 401,
-        }
-      );
-    }
+  if (!schedulerSecret) {
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "SCHEDULER_SECRET n'est pas configuré.",
+      },
+      {
+        status: 500,
+      }
+    );
   }
 
-  if (!externalPublishingIsAllowed()) {
-    return NextResponse.json({
-      success: false,
-      blocked: true,
-      message:
-        "Publication externe bloquée par sécurité. ALLOW_EXTERNAL_PUBLISHING doit être explicitement défini à true pour autoriser un envoi réel.",
-      processed: 0,
-      published: 0,
-      failed: 0,
-      results: [],
-    });
+  const authorization =
+    request.headers.get(
+      "authorization"
+    );
+
+  if (
+    authorization !==
+    `Bearer ${schedulerSecret}`
+  ) {
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Accès non autorisé.",
+      },
+      {
+        status: 401,
+      }
+    );
   }
 
   const now =
@@ -623,6 +674,26 @@ export async function POST(
     const publication
     of publications
   ) {
+    if (
+      !channelPublishingIsAllowed(
+        publication.channel
+      )
+    ) {
+      results.push({
+        id: publication.id,
+        channel:
+          publication.channel,
+        success: false,
+        blocked: true,
+        message:
+          getBlockedMessage(
+            publication.channel
+          ),
+      });
+
+      continue;
+    }
+
     try {
       if (
         publication.channel ===
@@ -682,21 +753,33 @@ export async function POST(
     }
   }
 
+  const published =
+    results.filter(
+      (result) =>
+        result.success
+    ).length;
+
+  const blocked =
+    results.filter(
+      (result) =>
+        result.blocked
+    ).length;
+
+  const failed =
+    results.filter(
+      (result) =>
+        !result.success &&
+        !result.blocked
+    ).length;
+
   return NextResponse.json({
     success: true,
     checked_at: now,
     processed:
       publications.length,
-    published:
-      results.filter(
-        (result) =>
-          result.success
-      ).length,
-    failed:
-      results.filter(
-        (result) =>
-          !result.success
-      ).length,
+    published,
+    blocked,
+    failed,
     results,
   });
 }
