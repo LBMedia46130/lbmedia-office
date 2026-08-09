@@ -24,6 +24,13 @@ type PublicationResult = {
   message: string;
 };
 
+function externalPublishingIsAllowed() {
+  return (
+    process.env.ALLOW_EXTERNAL_PUBLISHING ===
+    "true"
+  );
+}
+
 function getWordPressConfig() {
   const wordpressUrl =
     process.env.WORDPRESS_URL;
@@ -530,6 +537,19 @@ export async function POST(
         }
       );
     }
+  }
+
+  if (!externalPublishingIsAllowed()) {
+    return NextResponse.json({
+      success: false,
+      blocked: true,
+      message:
+        "Publication externe bloquée par sécurité. ALLOW_EXTERNAL_PUBLISHING doit être explicitement défini à true pour autoriser un envoi réel.",
+      processed: 0,
+      published: 0,
+      failed: 0,
+      results: [],
+    });
   }
 
   const now =
