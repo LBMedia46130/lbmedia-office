@@ -51,8 +51,7 @@ function toIsoDateTime(
     return null;
   }
 
-  const date =
-    new Date(value);
+  const date = new Date(value);
 
   if (
     Number.isNaN(
@@ -149,6 +148,13 @@ export default function PublicationEditor({
   );
 
   const [
+    brevoSendApprovedAt,
+    setBrevoSendApprovedAt,
+  ] = useState(
+    publication.brevo_send_approved_at
+  );
+
+  const [
     isSaving,
     setIsSaving,
   ] = useState(false);
@@ -166,6 +172,11 @@ export default function PublicationEditor({
   const [
     isCreatingBrevoDraft,
     setIsCreatingBrevoDraft,
+  ] = useState(false);
+
+  const [
+    isApprovingBrevoSend,
+    setIsApprovingBrevoSend,
   ] = useState(false);
 
   const [
@@ -592,6 +603,14 @@ export default function PublicationEditor({
         );
       }
 
+      if (
+        result.publication
+      ) {
+        syncFields(
+          result.publication
+        );
+      }
+
       setMessage(
         `Brouillon Brevo créé${
           result.brevo_campaign_id
@@ -607,6 +626,97 @@ export default function PublicationEditor({
       );
     } finally {
       setIsCreatingBrevoDraft(
+        false
+      );
+    }
+  }
+
+  async function approveBrevoSend() {
+    if (channel !== "brevo") {
+      return;
+    }
+
+    if (status !== "scheduled") {
+      setMessage(null);
+      setError(
+        "La newsletter doit être planifiée avant d’autoriser son envoi."
+      );
+
+      return;
+    }
+
+    if (
+      !publication.brevo_campaign_id
+    ) {
+      setMessage(null);
+      setError(
+        "Crée d’abord le brouillon Brevo."
+      );
+
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        "Autoriser explicitement l’envoi de cette campagne Brevo à la liste newsletter à la date planifiée ?"
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsApprovingBrevoSend(true);
+    setMessage(null);
+    setError(null);
+
+    try {
+      const approvedAt =
+        new Date().toISOString();
+
+      const response =
+        await fetch(
+          `/api/publications/${publication.id}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              brevo_send_approved_at:
+                approvedAt,
+            }),
+          }
+        );
+
+      const result =
+        await response.json();
+
+      if (
+        !response.ok ||
+        !result.success
+      ) {
+        throw new Error(
+          result.message ??
+            "Impossible d’autoriser l’envoi Brevo."
+        );
+      }
+
+      syncFields(
+        result.publication
+      );
+
+      setMessage(
+        "Envoi Brevo explicitement autorisé."
+      );
+    } catch (approvalError) {
+      setError(
+        approvalError instanceof Error
+          ? approvalError.message
+          : "Une erreur est survenue."
+      );
+    } finally {
+      setIsApprovingBrevoSend(
         false
       );
     }
@@ -753,6 +863,10 @@ export default function PublicationEditor({
       updatedPublication.hashtags ??
         ""
     );
+
+    setBrevoSendApprovedAt(
+      updatedPublication.brevo_send_approved_at
+    );
   }
 
   const isBusy =
@@ -760,6 +874,7 @@ export default function PublicationEditor({
     isGenerating ||
     isChangingStatus ||
     isCreatingBrevoDraft ||
+    isApprovingBrevoSend ||
     isPublishingFacebook;
 
   const canEdit =
@@ -814,6 +929,31 @@ export default function PublicationEditor({
               : "Une date de publication doit être définie."}
           </p>
         </div>
+      ) : null}
+
+      {channel === "brevo" &&
+      status === "scheduled" ? (
+        brevoSendApprovedAt ? (
+          <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+            <p className="text-sm font-semibold text-emerald-900">
+              Envoi Brevo autorisé
+            </p>
+
+            <p className="mt-1 text-sm text-emerald-700">
+              Cette campagne peut être envoyée par le scheduler à l’heure prévue.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-semibold text-amber-950">
+              Envoi Brevo non autorisé
+            </p>
+
+            <p className="mt-1 text-sm text-amber-800">
+              La campagne est planifiée, mais le scheduler ne doit pas l’envoyer tant que tu ne l’as pas autorisée explicitement.
+            </p>
+          </div>
+        )
       ) : null}
 
       {status === "published" ? (
@@ -906,6 +1046,26 @@ export default function PublicationEditor({
             {isCreatingBrevoDraft
               ? "Création dans Brevo..."
               : "Créer le brouillon dans Brevo"}
+          </button>
+        ) : null}
+
+        {channel === "brevo" &&
+        status === "scheduled" &&
+        !brevoSendApprovedAt ? (
+          <button
+            type="button"
+            onClick={
+              approveBrevoSend
+            }
+            disabled={
+              isBusy ||
+              !publication.brevo_campaign_id
+            }
+            className="rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isApprovingBrevoSend
+              ? "Autorisation..."
+              : "Autoriser l’envoi Brevo"}
           </button>
         ) : null}
 

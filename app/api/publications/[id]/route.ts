@@ -13,6 +13,18 @@ type RouteContext = {
   }>;
 };
 
+function hasBrevoContentChange(
+  body: UpdatePublicationInput
+) {
+  return (
+    body.title !== undefined ||
+    body.content !== undefined ||
+    body.subject !== undefined ||
+    body.preview_text !== undefined ||
+    body.link_url !== undefined
+  );
+}
+
 export async function PATCH(
   request: Request,
   context: RouteContext
@@ -59,9 +71,14 @@ export async function PATCH(
     error: currentPublicationError,
   } = await supabaseAdmin
     .from("publications")
-    .select(
-      "id, status, scheduled_at, published_at"
-    )
+    .select(`
+      id,
+      channel,
+      status,
+      scheduled_at,
+      published_at,
+      brevo_send_approved_at
+    `)
     .eq("id", id)
     .maybeSingle();
 
@@ -163,6 +180,15 @@ export async function PATCH(
       updateData.scheduled_at =
         null;
     }
+
+    if (
+      currentPublication.channel ===
+        "brevo" &&
+      body.status !== "scheduled"
+    ) {
+      updateData.brevo_send_approved_at =
+        null;
+    }
   }
 
   if (body.slug !== undefined) {
@@ -235,6 +261,23 @@ export async function PATCH(
       nextStatus === "published"
         ? body.scheduled_at
         : null;
+  }
+
+  if (
+    currentPublication.channel ===
+      "brevo" &&
+    hasBrevoContentChange(body)
+  ) {
+    updateData.brevo_send_approved_at =
+      null;
+  }
+
+  if (
+    body.brevo_send_approved_at !==
+    undefined
+  ) {
+    updateData.brevo_send_approved_at =
+      body.brevo_send_approved_at;
   }
 
   const {

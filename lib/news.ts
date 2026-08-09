@@ -84,6 +84,7 @@ export type Publication = {
 
   wordpress_post_id: number | null;
   brevo_campaign_id: number | null;
+  brevo_send_approved_at: string | null;
 
   created_at: string;
   updated_at: string;
@@ -107,4 +108,6 @@ export type UpdatePublicationInput = {
   hashtags?: string | null;
 
   scheduled_at?: string | null;
+
+  brevo_send_approved_at?: string | null;
 };

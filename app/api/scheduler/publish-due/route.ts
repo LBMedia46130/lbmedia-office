@@ -14,6 +14,7 @@ type ScheduledPublication = {
   link_url: string | null;
   wordpress_post_id: number | null;
   brevo_campaign_id: number | null;
+  brevo_send_approved_at: string | null;
   scheduled_at: string | null;
 };
 
@@ -422,6 +423,19 @@ async function sendBrevo(
     };
   }
 
+  if (
+    !publication.brevo_send_approved_at
+  ) {
+    return {
+      id: publication.id,
+      channel: "brevo",
+      success: false,
+      blocked: true,
+      message:
+        "Envoi Brevo bloqué : cette newsletter n’a pas reçu d’autorisation explicite d’envoi.",
+    };
+  }
+
   const apiKey =
     process.env.BREVO_API_KEY;
 
@@ -623,6 +637,7 @@ export async function POST(
       link_url,
       wordpress_post_id,
       brevo_campaign_id,
+      brevo_send_approved_at,
       scheduled_at
     `)
     .eq(
