@@ -16,28 +16,6 @@ type PublicationEditorProps = {
   label: string;
 };
 
-const statuses: {
-  value: PublicationStatus;
-  label: string;
-}[] = [
-  {
-    value: "draft",
-    label: "Brouillon",
-  },
-  {
-    value: "ready",
-    label: "Prête",
-  },
-  {
-    value: "scheduled",
-    label: "Planifiée",
-  },
-  {
-    value: "published",
-    label: "Publiée",
-  },
-];
-
 function toLocalDateTimeValue(
   value: string | null
 ) {
@@ -181,6 +159,11 @@ export default function PublicationEditor({
   ] = useState(false);
 
   const [
+    isChangingStatus,
+    setIsChangingStatus,
+  ] = useState(false);
+
+  const [
     isCreatingBrevoDraft,
     setIsCreatingBrevoDraft,
   ] = useState(false);
@@ -211,6 +194,80 @@ export default function PublicationEditor({
     syncFields(publication);
   }, [publication]);
 
+  function buildUpdatePayload(
+    nextStatus: PublicationStatus = status,
+    nextScheduledAt:
+      | string
+      | null = scheduledAt
+  ) {
+    return {
+      title,
+      content,
+      status: nextStatus,
+      scheduled_at:
+        nextStatus === "scheduled"
+          ? toIsoDateTime(
+              nextScheduledAt ?? ""
+            )
+          : null,
+      slug,
+      seo_title: seoTitle,
+      meta_description:
+        metaDescription,
+      subject,
+      preview_text:
+        previewText,
+      call_to_action:
+        callToAction,
+      link_url: linkUrl,
+      hashtags,
+    };
+  }
+
+  async function updatePublication(
+    nextStatus: PublicationStatus,
+    nextScheduledAt:
+      | string
+      | null = scheduledAt
+  ) {
+    const response =
+      await fetch(
+        `/api/publications/${publication.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify(
+            buildUpdatePayload(
+              nextStatus,
+              nextScheduledAt
+            )
+          ),
+        }
+      );
+
+    const result =
+      await response.json();
+
+    if (
+      !response.ok ||
+      !result.success
+    ) {
+      throw new Error(
+        result.message ??
+          "Impossible d’enregistrer."
+      );
+    }
+
+    syncFields(
+      result.publication
+    );
+
+    return result.publication as Publication;
+  }
+
   async function savePublication() {
     if (
       status === "scheduled" &&
@@ -229,61 +286,13 @@ export default function PublicationEditor({
     setError(null);
 
     try {
-      const response =
-        await fetch(
-          `/api/publications/${publication.id}`,
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              title,
-              content,
-              status,
-              scheduled_at:
-                status ===
-                "scheduled"
-                  ? toIsoDateTime(
-                      scheduledAt
-                    )
-                  : null,
-              slug,
-              seo_title:
-                seoTitle,
-              meta_description:
-                metaDescription,
-              subject,
-              preview_text:
-                previewText,
-              call_to_action:
-                callToAction,
-              link_url: linkUrl,
-              hashtags,
-            }),
-          }
-        );
-
-      const result =
-        await response.json();
-
-      if (
-        !response.ok ||
-        !result.success
-      ) {
-        throw new Error(
-          result.message ??
-            "Impossible d’enregistrer."
-        );
-      }
-
-      syncFields(
-        result.publication
+      await updatePublication(
+        status,
+        scheduledAt
       );
 
       setMessage(
-        "Enregistré."
+        "Modifications enregistrées."
       );
     } catch (saveError) {
       setError(
@@ -293,6 +302,168 @@ export default function PublicationEditor({
       );
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function validatePublication() {
+    if (!content.trim()) {
+      setMessage(null);
+      setError(
+        "Le contenu doit être renseigné avant validation."
+      );
+
+      return;
+    }
+
+    setIsChangingStatus(true);
+    setMessage(null);
+    setError(null);
+
+    try {
+      await updatePublication(
+        "ready",
+        null
+      );
+
+      setScheduledAt("");
+
+      setMessage(
+        `${label} validé. La publication est prête.`
+      );
+    } catch (validationError) {
+      setError(
+        validationError instanceof Error
+          ? validationError.message
+          : "Une erreur est survenue."
+      );
+    } finally {
+      setIsChangingStatus(false);
+    }
+  }
+
+  async function retryFailedPublication() {
+    if (!content.trim()) {
+      setMessage(null);
+      setError(
+        "Le contenu doit être renseigné avant de relancer la publication."
+      );
+
+      return;
+    }
+
+    setIsChangingStatus(true);
+    setMessage(null);
+    setError(null);
+
+    try {
+      await updatePublication(
+        "ready",
+        null
+      );
+
+      setScheduledAt("");
+
+      setMessage(
+        `${label} est de nouveau prête à être planifiée ou publiée.`
+      );
+    } catch (retryError) {
+      setError(
+        retryError instanceof Error
+          ? retryError.message
+          : "Une erreur est survenue."
+      );
+    } finally {
+      setIsChangingStatus(false);
+    }
+  }
+
+  async function returnToDraft() {
+    setIsChangingStatus(true);
+    setMessage(null);
+    setError(null);
+
+    try {
+      await updatePublication(
+        "draft",
+        null
+      );
+
+      setScheduledAt("");
+
+      setMessage(
+        `${label} repassé en brouillon.`
+      );
+    } catch (statusError) {
+      setError(
+        statusError instanceof Error
+          ? statusError.message
+          : "Une erreur est survenue."
+      );
+    } finally {
+      setIsChangingStatus(false);
+    }
+  }
+
+  async function schedulePublication() {
+    if (!scheduledAt) {
+      setMessage(null);
+      setError(
+        "Choisis une date et une heure avant de planifier."
+      );
+
+      return;
+    }
+
+    setIsChangingStatus(true);
+    setMessage(null);
+    setError(null);
+
+    try {
+      await updatePublication(
+        "scheduled",
+        scheduledAt
+      );
+
+      setMessage(
+        `${label} planifié pour le ${formatDateTime(
+          scheduledAt
+        )}.`
+      );
+    } catch (scheduleError) {
+      setError(
+        scheduleError instanceof Error
+          ? scheduleError.message
+          : "Une erreur est survenue."
+      );
+    } finally {
+      setIsChangingStatus(false);
+    }
+  }
+
+  async function cancelSchedule() {
+    setIsChangingStatus(true);
+    setMessage(null);
+    setError(null);
+
+    try {
+      await updatePublication(
+        "ready",
+        null
+      );
+
+      setScheduledAt("");
+
+      setMessage(
+        `Planification de ${label} annulée. La publication reste prête.`
+      );
+    } catch (scheduleError) {
+      setError(
+        scheduleError instanceof Error
+          ? scheduleError.message
+          : "Une erreur est survenue."
+      );
+    } finally {
+      setIsChangingStatus(false);
     }
   }
 
@@ -345,8 +516,7 @@ export default function PublicationEditor({
       generationError
     ) {
       setError(
-        generationError instanceof
-          Error
+        generationError instanceof Error
           ? generationError.message
           : "Une erreur est survenue."
       );
@@ -356,82 +526,32 @@ export default function PublicationEditor({
   }
 
   async function saveBrevoBeforeDraft() {
-    const response =
-      await fetch(
-        `/api/publications/${publication.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            title,
-            content,
-            status,
-            subject,
-            preview_text:
-              previewText,
-            link_url: linkUrl,
-          }),
-        }
-      );
-
-    const result =
-      await response.json();
-
-    if (
-      !response.ok ||
-      !result.success
-    ) {
-      throw new Error(
-        result.message ??
-          "Impossible d’enregistrer la newsletter."
-      );
-    }
-
-    syncFields(
-      result.publication
+    await updatePublication(
+      status,
+      scheduledAt
     );
   }
 
   async function saveFacebookBeforePublish() {
-    const response =
-      await fetch(
-        `/api/publications/${publication.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            content,
-            status,
-            link_url: linkUrl,
-          }),
-        }
-      );
-
-    const result =
-      await response.json();
-
-    if (
-      !response.ok ||
-      !result.success
-    ) {
-      throw new Error(
-        result.message ??
-          "Impossible d’enregistrer la publication Facebook."
-      );
-    }
-
-    syncFields(
-      result.publication
+    await updatePublication(
+      status,
+      scheduledAt
     );
   }
 
   async function createBrevoDraft() {
+    if (
+      status !== "ready" &&
+      status !== "scheduled"
+    ) {
+      setMessage(null);
+      setError(
+        "Valide d’abord la newsletter avant de créer le brouillon Brevo."
+      );
+
+      return;
+    }
+
     const confirmed =
       window.confirm(
         "Créer maintenant un brouillon de campagne Brevo avec cette newsletter ? Aucun email ne sera envoyé."
@@ -493,6 +613,18 @@ export default function PublicationEditor({
   }
 
   async function publishFacebook() {
+    if (
+      status !== "ready" &&
+      status !== "scheduled"
+    ) {
+      setMessage(null);
+      setError(
+        "Valide d’abord la publication Facebook avant de la publier."
+      );
+
+      return;
+    }
+
     const confirmed =
       window.confirm(
         "Publier maintenant ce contenu sur la page Facebook LBMedia ? Cette action le rendra visible publiquement."
@@ -548,8 +680,7 @@ export default function PublicationEditor({
       facebookError
     ) {
       setError(
-        facebookError instanceof
-          Error
+        facebookError instanceof Error
           ? facebookError.message
           : "Une erreur est survenue."
       );
@@ -627,8 +758,15 @@ export default function PublicationEditor({
   const isBusy =
     isSaving ||
     isGenerating ||
+    isChangingStatus ||
     isCreatingBrevoDraft ||
     isPublishingFacebook;
+
+  const canEdit =
+    status !== "published";
+
+  const canPlan =
+    status === "ready";
 
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -645,63 +783,118 @@ export default function PublicationEditor({
           </p>
         </div>
 
-        <select
-          value={status}
-          onChange={(event) => {
-            const nextStatus =
-              event.target
-                .value as PublicationStatus;
-
-            setStatus(nextStatus);
-
-            if (
-              nextStatus !==
-              "scheduled"
-            ) {
-              setScheduledAt("");
-            }
-          }}
-          disabled={isBusy}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 outline-none disabled:opacity-50"
-        >
-          {statuses.map(
-            (option) => (
-              <option
-                key={option.value}
-                value={option.value}
-              >
-                {option.label}
-              </option>
-            )
-          )}
-        </select>
+        <StatusBadge
+          status={status}
+        />
       </div>
 
-      {status ===
-      "scheduled" ? (
-        <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Date et heure de
-            publication
-          </label>
+      {status === "ready" ? (
+        <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+          <p className="text-sm font-semibold text-emerald-900">
+            Contenu validé
+          </p>
 
-          <input
-            type="datetime-local"
-            value={scheduledAt}
-            onChange={(event) =>
-              setScheduledAt(
-                event.target.value
-              )
+          <p className="mt-1 text-sm text-emerald-700">
+            Cette déclinaison est prête à être planifiée ou publiée.
+          </p>
+        </div>
+      ) : null}
+
+      {status === "scheduled" ? (
+        <div className="mt-5 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+          <p className="text-sm font-semibold text-indigo-900">
+            Publication planifiée
+          </p>
+
+          <p className="mt-1 text-sm text-indigo-700">
+            {scheduledAt
+              ? `Prévue le ${formatDateTime(
+                  scheduledAt
+                )}.`
+              : "Une date de publication doit être définie."}
+          </p>
+        </div>
+      ) : null}
+
+      {status === "published" ? (
+        <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-sm font-semibold text-slate-900">
+            Publication effectuée
+          </p>
+
+          <p className="mt-1 text-sm text-slate-600">
+            Cette déclinaison est marquée comme publiée.
+          </p>
+        </div>
+      ) : null}
+
+      {status === "failed" ? (
+        <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4">
+          <p className="text-sm font-semibold text-red-900">
+            Publication en échec
+          </p>
+
+          <p className="mt-1 text-sm text-red-700">
+            Le contenu n’a pas été publié. Tu peux le remettre en attente puis le replanifier.
+          </p>
+
+          <button
+            type="button"
+            onClick={
+              retryFailedPublication
             }
             disabled={isBusy}
-            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-950 disabled:opacity-50"
-          />
+            className="mt-4 rounded-xl bg-red-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isChangingStatus
+              ? "Remise en attente..."
+              : "Réessayer"}
+          </button>
+        </div>
+      ) : null}
+
+      {canPlan ? (
+        <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Date et heure de publication
+          </label>
+
+          <div className="mt-2 flex flex-wrap gap-3">
+            <input
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={(event) =>
+                setScheduledAt(
+                  event.target.value
+                )
+              }
+              disabled={isBusy}
+              className="min-w-64 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-950 disabled:opacity-50"
+            />
+
+            <button
+              type="button"
+              onClick={
+                schedulePublication
+              }
+              disabled={
+                isBusy ||
+                !scheduledAt
+              }
+              className="rounded-xl bg-indigo-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isChangingStatus
+                ? "Planification..."
+                : "Planifier"}
+            </button>
+          </div>
         </div>
       ) : null}
 
       <div className="mt-5 flex flex-wrap justify-end gap-3">
-        {channel ===
-        "brevo" ? (
+        {channel === "brevo" &&
+        (status === "ready" ||
+          status === "scheduled") ? (
           <button
             type="button"
             onClick={
@@ -716,10 +909,9 @@ export default function PublicationEditor({
           </button>
         ) : null}
 
-        {channel ===
-          "facebook" &&
-        status !==
-          "published" ? (
+        {channel === "facebook" &&
+        (status === "ready" ||
+          status === "scheduled") ? (
           <button
             type="button"
             onClick={
@@ -730,32 +922,94 @@ export default function PublicationEditor({
           >
             {isPublishingFacebook
               ? "Publication Facebook..."
-              : "Publier sur Facebook"}
+              : "Publier maintenant"}
           </button>
         ) : null}
 
-        <button
-          type="button"
-          onClick={
-            generatePublication
-          }
-          disabled={isBusy}
-          className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isGenerating
-            ? "Génération..."
-            : "Générer avec l’IA"}
-        </button>
+        {status === "draft" ? (
+          <button
+            type="button"
+            onClick={
+              generatePublication
+            }
+            disabled={isBusy}
+            className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isGenerating
+              ? "Génération..."
+              : "Générer avec l’IA"}
+          </button>
+        ) : null}
+
+        {status === "draft" ? (
+          <button
+            type="button"
+            onClick={
+              validatePublication
+            }
+            disabled={
+              isBusy ||
+              !content.trim()
+            }
+            className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isChangingStatus
+              ? "Validation..."
+              : "Valider"}
+          </button>
+        ) : null}
+
+        {status === "ready" ? (
+          <button
+            type="button"
+            onClick={
+              returnToDraft
+            }
+            disabled={isBusy}
+            className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Repasser en brouillon
+          </button>
+        ) : null}
+
+        {status === "scheduled" ? (
+          <button
+            type="button"
+            onClick={
+              cancelSchedule
+            }
+            disabled={isBusy}
+            className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Annuler la planification
+          </button>
+        ) : null}
+
+        {status === "failed" ? (
+          <button
+            type="button"
+            onClick={
+              returnToDraft
+            }
+            disabled={isBusy}
+            className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Repasser en brouillon
+          </button>
+        ) : null}
       </div>
 
       <div className="mt-5 grid gap-4">
-        {channel ===
-        "brevo" ? (
+        {channel === "brevo" ? (
           <>
             <Field
               label="Objet de l’email"
               value={subject}
               onChange={setSubject}
+              disabled={
+                !canEdit ||
+                isBusy
+              }
             />
 
             <Field
@@ -764,6 +1018,10 @@ export default function PublicationEditor({
               onChange={
                 setPreviewText
               }
+              disabled={
+                !canEdit ||
+                isBusy
+              }
             />
 
             <TextArea
@@ -771,6 +1029,10 @@ export default function PublicationEditor({
               value={content}
               onChange={setContent}
               rows={12}
+              disabled={
+                !canEdit ||
+                isBusy
+              }
             />
 
             <Field
@@ -778,6 +1040,10 @@ export default function PublicationEditor({
               value={linkUrl}
               onChange={setLinkUrl}
               placeholder="https://..."
+              disabled={
+                !canEdit ||
+                isBusy
+              }
             />
           </>
         ) : null}
@@ -790,6 +1056,10 @@ export default function PublicationEditor({
               value={content}
               onChange={setContent}
               rows={8}
+              disabled={
+                !canEdit ||
+                isBusy
+              }
             />
 
             <Field
@@ -799,6 +1069,10 @@ export default function PublicationEditor({
                 setCallToAction
               }
               placeholder="En savoir plus"
+              disabled={
+                !canEdit ||
+                isBusy
+              }
             />
 
             <Field
@@ -806,6 +1080,10 @@ export default function PublicationEditor({
               value={linkUrl}
               onChange={setLinkUrl}
               placeholder="https://..."
+              disabled={
+                !canEdit ||
+                isBusy
+              }
             />
           </>
         ) : null}
@@ -818,6 +1096,10 @@ export default function PublicationEditor({
               value={content}
               onChange={setContent}
               rows={10}
+              disabled={
+                !canEdit ||
+                isBusy
+              }
             />
 
             <Field
@@ -825,6 +1107,10 @@ export default function PublicationEditor({
               value={hashtags}
               onChange={setHashtags}
               placeholder="#communication #marketing"
+              disabled={
+                !canEdit ||
+                isBusy
+              }
             />
 
             <Field
@@ -832,6 +1118,10 @@ export default function PublicationEditor({
               value={linkUrl}
               onChange={setLinkUrl}
               placeholder="https://..."
+              disabled={
+                !canEdit ||
+                isBusy
+              }
             />
           </>
         ) : null}
@@ -844,6 +1134,10 @@ export default function PublicationEditor({
               value={content}
               onChange={setContent}
               rows={10}
+              disabled={
+                !canEdit ||
+                isBusy
+              }
             />
 
             <Field
@@ -851,6 +1145,10 @@ export default function PublicationEditor({
               value={linkUrl}
               onChange={setLinkUrl}
               placeholder="https://..."
+              disabled={
+                !canEdit ||
+                isBusy
+              }
             />
           </>
         ) : null}
@@ -868,20 +1166,22 @@ export default function PublicationEditor({
         </p>
       ) : null}
 
-      <div className="mt-5 flex justify-end">
-        <button
-          type="button"
-          onClick={
-            savePublication
-          }
-          disabled={isBusy}
-          className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isSaving
-            ? "Enregistrement..."
-            : "Enregistrer"}
-        </button>
-      </div>
+      {canEdit ? (
+        <div className="mt-5 flex justify-end">
+          <button
+            type="button"
+            onClick={
+              savePublication
+            }
+            disabled={isBusy}
+            className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isSaving
+              ? "Enregistrement..."
+              : "Enregistrer"}
+          </button>
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -893,6 +1193,7 @@ type FieldProps = {
     value: string
   ) => void;
   placeholder?: string;
+  disabled?: boolean;
 };
 
 function Field({
@@ -900,6 +1201,7 @@ function Field({
   value,
   onChange,
   placeholder,
+  disabled = false,
 }: FieldProps) {
   return (
     <div>
@@ -917,7 +1219,8 @@ function Field({
         placeholder={
           placeholder
         }
-        className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-950"
+        disabled={disabled}
+        className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-950 outline-none focus:border-slate-950 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
       />
     </div>
   );
@@ -930,6 +1233,7 @@ type TextAreaProps = {
     value: string
   ) => void;
   rows: number;
+  disabled?: boolean;
 };
 
 function TextArea({
@@ -937,6 +1241,7 @@ function TextArea({
   value,
   onChange,
   rows,
+  disabled = false,
 }: TextAreaProps) {
   return (
     <div>
@@ -952,10 +1257,74 @@ function TextArea({
           )
         }
         rows={rows}
-        className="mt-2 w-full resize-y rounded-xl border border-slate-300 px-4 py-3 text-sm leading-6 text-slate-950 outline-none focus:border-slate-950"
+        disabled={disabled}
+        className="mt-2 w-full resize-y rounded-xl border border-slate-300 px-4 py-3 text-sm leading-6 text-slate-950 outline-none focus:border-slate-950 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
       />
     </div>
   );
+}
+
+function StatusBadge({
+  status,
+}: {
+  status: PublicationStatus;
+}) {
+  const styles: Record<
+    PublicationStatus,
+    string
+  > = {
+    draft:
+      "border-slate-200 bg-slate-100 text-slate-700",
+    ready:
+      "border-emerald-200 bg-emerald-50 text-emerald-700",
+    scheduled:
+      "border-indigo-200 bg-indigo-50 text-indigo-700",
+    published:
+      "border-blue-200 bg-blue-50 text-blue-700",
+    failed:
+      "border-red-200 bg-red-50 text-red-700",
+  };
+
+  const labels: Record<
+    PublicationStatus,
+    string
+  > = {
+    draft: "Brouillon",
+    ready: "Prête",
+    scheduled: "Planifiée",
+    published: "Publiée",
+    failed: "Échec",
+  };
+
+  return (
+    <span
+      className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${styles[status]}`}
+    >
+      {labels[status]}
+    </span>
+  );
+}
+
+function formatDateTime(
+  value: string
+) {
+  const date = new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(
+    "fr-FR",
+    {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }
+  ).format(date);
 }
 
 function getChannelDescription(

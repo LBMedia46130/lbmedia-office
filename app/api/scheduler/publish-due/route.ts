@@ -1,0 +1,573 @@
+import { NextResponse } from "next/server";
+
+import { supabaseAdmin } from "@/lib/supabase-admin";
+
+type ScheduledPublication = {
+  id: string;
+  channel: string;
+  title: string | null;
+  content: string;
+  slug: string | null;
+  meta_description: string | null;
+  link_url: string | null;
+  wordpress_post_id: number | null;
+  scheduled_at: string | null;
+};
+
+type PublicationResult = {
+  id: string;
+  channel: string;
+  success: boolean;
+  message: string;
+};
+
+function getWordPressConfig() {
+  const wordpressUrl =
+    process.env.WORDPRESS_URL;
+
+  const username =
+    process.env.WORDPRESS_USERNAME;
+
+  const appPassword =
+    process.env.WORDPRESS_APP_PASSWORD;
+
+  if (
+    !wordpressUrl ||
+    !username ||
+    !appPassword
+  ) {
+    throw new Error(
+      "Configuration WordPress incomplète."
+    );
+  }
+
+  return {
+    wordpressUrl,
+    username,
+    appPassword,
+  };
+}
+
+function formatExternalError(
+  data: unknown
+) {
+  if (typeof data === "string") {
+    return data;
+  }
+
+  try {
+    return JSON.stringify(data);
+  } catch {
+    return "Réponse externe illisible.";
+  }
+}
+
+async function publishWordPress(
+  publication: ScheduledPublication
+): Promise<PublicationResult> {
+  if (
+    publication.channel !== "website"
+  ) {
+    return {
+      id: publication.id,
+      channel: publication.channel,
+      success: false,
+      message:
+        "Canal WordPress invalide.",
+    };
+  }
+
+  if (
+    !publication.wordpress_post_id
+  ) {
+    throw new Error(
+      "Aucun brouillon WordPress n’existe pour cette actualité."
+    );
+  }
+
+  if (!publication.content?.trim()) {
+    throw new Error(
+      "Le contenu WordPress est vide."
+    );
+  }
+
+  const {
+    wordpressUrl,
+    username,
+    appPassword,
+  } = getWordPressConfig();
+
+  const authorization =
+    Buffer.from(
+      `${username}:${appPassword}`
+    ).toString("base64");
+
+  const response = await fetch(
+    `${wordpressUrl}/wp-json/wp/v2/posts/${publication.wordpress_post_id}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization:
+          `Basic ${authorization}`,
+        "Content-Type":
+          "application/json",
+      },
+      body: JSON.stringify({
+        title:
+          publication.title ||
+          "Actualité LBMedia",
+        content:
+          publication.content,
+        slug:
+          publication.slug ||
+          undefined,
+        excerpt:
+          publication.meta_description ||
+          undefined,
+        status: "publish",
+      }),
+      cache: "no-store",
+    }
+  );
+
+  const rawResponse =
+    await response.text();
+
+  let wordpressData: unknown = null;
+
+  try {
+    wordpressData = rawResponse
+      ? JSON.parse(rawResponse)
+      : null;
+  } catch {
+    wordpressData = rawResponse;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      `WordPress a refusé la publication (${response.status}) : ${formatExternalError(
+        wordpressData
+      )}`
+    );
+  }
+
+  const data =
+    wordpressData as {
+      id?: number;
+      link?: string;
+      date_gmt?: string;
+    } | null;
+
+  const publishedAt =
+    data?.date_gmt
+      ? new Date(
+          `${data.date_gmt}Z`
+        ).toISOString()
+      : new Date().toISOString();
+
+  const {
+    error: updateError,
+  } = await supabaseAdmin
+    .from("publications")
+    .update({
+      status: "published",
+      published_at: publishedAt,
+      published_url:
+        data?.link ?? null,
+      updated_at:
+        new Date().toISOString(),
+    })
+    .eq("id", publication.id);
+
+  if (updateError) {
+    throw new Error(
+      `Publication WordPress effectuée, mais statut LBMedia Office non enregistré : ${updateError.message}`
+    );
+  }
+
+  const newsId =
+    await getNewsId(
+      publication.id
+    );
+
+  const {
+    error: newsUpdateError,
+  } = await supabaseAdmin
+    .from("news")
+    .update({
+      status: "published",
+      updated_at:
+        new Date().toISOString(),
+    })
+    .eq("id", newsId);
+
+  if (newsUpdateError) {
+    throw new Error(
+      `Article publié, mais statut de l’actualité non synchronisé : ${newsUpdateError.message}`
+    );
+  }
+
+  return {
+    id: publication.id,
+    channel: "website",
+    success: true,
+    message:
+      "Actualité publiée sur WordPress.",
+  };
+}
+
+async function publishFacebook(
+  publication: ScheduledPublication
+): Promise<PublicationResult> {
+  if (!publication.content?.trim()) {
+    throw new Error(
+      "Le contenu Facebook est vide."
+    );
+  }
+
+  const pageId =
+    process.env.META_PAGE_ID;
+
+  const accessToken =
+    process.env.META_PAGE_ACCESS_TOKEN;
+
+  if (!pageId || !accessToken) {
+    throw new Error(
+      "Configuration Meta incomplète."
+    );
+  }
+
+  const messageParts = [
+    publication.content.trim(),
+  ];
+
+  if (publication.link_url?.trim()) {
+    messageParts.push(
+      publication.link_url.trim()
+    );
+  }
+
+  const body =
+    new URLSearchParams();
+
+  body.set(
+    "message",
+    messageParts.join("\n\n")
+  );
+
+  body.set(
+    "access_token",
+    accessToken
+  );
+
+  const response = await fetch(
+    `https://graph.facebook.com/v26.0/${pageId}/feed`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type":
+          "application/x-www-form-urlencoded",
+      },
+      body: body.toString(),
+      cache: "no-store",
+    }
+  );
+
+  const rawResponse =
+    await response.text();
+
+  let metaData: unknown = null;
+
+  try {
+    metaData = rawResponse
+      ? JSON.parse(rawResponse)
+      : null;
+  } catch {
+    metaData = rawResponse;
+  }
+
+  if (!response.ok) {
+    console.error(
+      "Scheduled Facebook publication failed",
+      {
+        status:
+          response.status,
+        metaData,
+      }
+    );
+
+    throw new Error(
+      `Meta a refusé la publication Facebook (${response.status}) : ${formatExternalError(
+        metaData
+      )}`
+    );
+  }
+
+  const data =
+    metaData as {
+      id?: string;
+    } | null;
+
+  const facebookPostId =
+    typeof data?.id === "string"
+      ? data.id
+      : null;
+
+  const publishedUrl =
+    facebookPostId
+      ? `https://www.facebook.com/${facebookPostId.replace(
+          "_",
+          "/posts/"
+        )}`
+      : null;
+
+  const publishedAt =
+    new Date().toISOString();
+
+  const {
+    error: updateError,
+  } = await supabaseAdmin
+    .from("publications")
+    .update({
+      status: "published",
+      published_at: publishedAt,
+      published_url:
+        publishedUrl,
+      updated_at:
+        publishedAt,
+    })
+    .eq("id", publication.id);
+
+  if (updateError) {
+    throw new Error(
+      `Facebook publié, mais statut LBMedia Office non enregistré : ${updateError.message}`
+    );
+  }
+
+  return {
+    id: publication.id,
+    channel: "facebook",
+    success: true,
+    message:
+      "Publication Facebook effectuée.",
+  };
+}
+
+async function getNewsId(
+  publicationId: string
+) {
+  const {
+    data,
+    error,
+  } = await supabaseAdmin
+    .from("publications")
+    .select("news_id")
+    .eq("id", publicationId)
+    .single();
+
+  if (error || !data) {
+    throw new Error(
+      "Impossible de retrouver l’actualité associée."
+    );
+  }
+
+  return data.news_id;
+}
+
+async function markFailed(
+  publicationId: string,
+  errorMessage: string
+) {
+  const now =
+    new Date().toISOString();
+
+  const {
+    error,
+  } = await supabaseAdmin
+    .from("publications")
+    .update({
+      status: "failed",
+      updated_at: now,
+    })
+    .eq("id", publicationId);
+
+  if (error) {
+    console.error(
+      "Unable to mark scheduled publication as failed",
+      {
+        publicationId,
+        error:
+          error.message,
+      }
+    );
+  }
+
+  console.error(
+    "Scheduled publication failed",
+    {
+      publicationId,
+      errorMessage,
+    }
+  );
+}
+
+export async function POST(
+  request: Request
+) {
+  const schedulerSecret =
+    process.env.SCHEDULER_SECRET;
+
+  if (schedulerSecret) {
+    const authorization =
+      request.headers.get(
+        "authorization"
+      );
+
+    if (
+      authorization !==
+      `Bearer ${schedulerSecret}`
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Accès non autorisé.",
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+  }
+
+  const now =
+    new Date().toISOString();
+
+  const {
+    data,
+    error,
+  } = await supabaseAdmin
+    .from("publications")
+    .select(`
+      id,
+      channel,
+      title,
+      content,
+      slug,
+      meta_description,
+      link_url,
+      wordpress_post_id,
+      scheduled_at
+    `)
+    .eq(
+      "status",
+      "scheduled"
+    )
+    .lte(
+      "scheduled_at",
+      now
+    )
+    .in(
+      "channel",
+      [
+        "website",
+        "facebook",
+      ]
+    )
+    .order(
+      "scheduled_at",
+      {
+        ascending: true,
+      }
+    );
+
+  if (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Impossible de charger les publications à traiter.",
+        error:
+          error.message,
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+
+  const publications =
+    (data ??
+      []) as ScheduledPublication[];
+
+  const results:
+    PublicationResult[] = [];
+
+  for (
+    const publication
+    of publications
+  ) {
+    try {
+      if (
+        publication.channel ===
+        "website"
+      ) {
+        results.push(
+          await publishWordPress(
+            publication
+          )
+        );
+
+        continue;
+      }
+
+      if (
+        publication.channel ===
+        "facebook"
+      ) {
+        results.push(
+          await publishFacebook(
+            publication
+          )
+        );
+      }
+    } catch (publicationError) {
+      const message =
+        publicationError instanceof
+        Error
+          ? publicationError.message
+          : "Erreur inconnue";
+
+      await markFailed(
+        publication.id,
+        message
+      );
+
+      results.push({
+        id: publication.id,
+        channel:
+          publication.channel,
+        success: false,
+        message,
+      });
+    }
+  }
+
+  return NextResponse.json({
+    success: true,
+    checked_at: now,
+    processed:
+      publications.length,
+    published:
+      results.filter(
+        (result) =>
+          result.success
+      ).length,
+    failed:
+      results.filter(
+        (result) =>
+          !result.success
+      ).length,
+    results,
+  });
+}
