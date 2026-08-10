@@ -1,9 +1,5 @@
-import fs from "node:fs";
-import path from "node:path";
-
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
-import sharp from "sharp";
 
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
@@ -28,7 +24,9 @@ export async function POST(
         message:
           "La clé API OpenAI n'est pas configurée.",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 
@@ -59,7 +57,9 @@ export async function POST(
           message:
             "Actualité introuvable.",
         },
-        { status: 404 }
+        {
+          status: 404,
+        }
       );
     }
 
@@ -88,7 +88,9 @@ export async function POST(
           message:
             "La publication WordPress associée est introuvable.",
         },
-        { status: 404 }
+        {
+          status: 404,
+        }
       );
     }
 
@@ -99,7 +101,9 @@ export async function POST(
           message:
             "Le titre est obligatoire avant de générer le visuel.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
@@ -110,7 +114,9 @@ export async function POST(
           message:
             "L’article doit être rédigé avant de générer son visuel.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
@@ -118,38 +124,61 @@ export async function POST(
       news.content
         .trim()
         .replace(/\s+/g, " ")
-        .slice(0, 2200);
+        .slice(0, 1800);
 
     const prompt = `
-Créer un visuel éditorial horizontal professionnel pour LBMedia.
+Créer UNE ILLUSTRATION ÉDITORIALE HORIZONTALE, simple et élégante, pour accompagner un article du site LBMedia.
 
-Sujet :
+SUJET DE L'ARTICLE :
 ${news.title.trim()}
 
-Résumé :
+CONTEXTE :
 ${articleExcerpt}
 
-Mot-clé principal :
-${websitePublication.focus_keyword || "Non défini"}
+THÈME PRINCIPAL :
+${websitePublication.focus_keyword || "communication d'entreprise locale"}
 
-Mots-clés secondaires :
-${websitePublication.secondary_keywords || "Non définis"}
+INTENTION DU VISUEL :
+${websitePublication.image_alt || "illustrer simplement le sujet principal de l'article"}
 
-Intention / texte ALT :
-${websitePublication.image_alt || "Illustration professionnelle du sujet"}
+DIRECTION ARTISTIQUE LBMEDIA :
+- une seule idée visuelle principale ;
+- composition sobre, moderne, professionnelle et immédiatement compréhensible ;
+- rendu éditorial premium, crédible et naturel ;
+- palette dominée par le bleu nuit profond, le bleu, le cyan / bleu lumineux et le blanc ;
+- contraste élégant, lumière maîtrisée, beaucoup d'espace visuel ;
+- esthétique adaptée à une agence de communication française travaillant avec des TPE et PME ;
+- privilégier une scène, un objet, une métaphore visuelle ou une composition simple liée directement au sujet ;
+- maximum 2 à 4 éléments visuels significatifs ;
+- aucun logo nécessaire.
 
-CHARTE LBMEDIA :
-- rendu moderne, professionnel, sobre et premium ;
-- adapté à une agence de communication française travaillant avec des TPE et PME ;
-- couleurs dominantes : bleu nuit profond, bleu, cyan / bleu lumineux et blanc ;
-- violet possible uniquement comme accent secondaire ;
-- composition claire, élégante et aérée ;
-- sujet principal immédiatement compréhensible ;
-- éviter l'esthétique banque d'images générique ;
-- éviter les clichés marketing et les effets futuristes gratuits ;
-- aucun texte, titre, slogan, logo, marque ou filigrane dans l'image ;
-- prévoir une zone visuellement calme dans l'angle inférieur droit afin d'y ajouter ensuite le logo LBMedia ;
-- format horizontal adapté à un article web et suffisamment souple pour un recadrage raisonnable.
+INTERDICTIONS ABSOLUES :
+- AUCUN TEXTE ;
+- AUCUNE LETTRE ;
+- AUCUN MOT ;
+- AUCUN CHIFFRE ;
+- AUCUNE TYPOGRAPHIE ;
+- AUCUN TITRE ;
+- AUCUN SLOGAN ;
+- AUCUNE LISTE ;
+- AUCUNE INFOGRAPHIE ;
+- AUCUN CALENDRIER ;
+- AUCUN TABLEAU ;
+- AUCUN GRAPHIQUE ;
+- AUCUNE CARTE AVEC DU TEXTE ;
+- AUCUNE INTERFACE UTILISATEUR ;
+- AUCUN ÉCRAN REMPLI D'ÉLÉMENTS ;
+- AUCUN FAUX SITE INTERNET ;
+- AUCUN LOGO ;
+- AUCUNE MARQUE ;
+- AUCUN FILIGRANE ;
+- éviter les accumulations d'icônes ;
+- éviter les compositions en plusieurs panneaux ;
+- éviter l'esthétique générique de présentation PowerPoint ou d'infographie marketing.
+
+Le résultat doit être une IMAGE D'ILLUSTRATION, pas un support d'information.
+Elle doit pouvoir accompagner l'article sans tenter d'en résumer tout le contenu.
+Format horizontal, composition aérée et facilement recadrable.
 `.trim();
 
     const result =
@@ -169,66 +198,11 @@ CHARTE LBMEDIA :
       );
     }
 
-    const generatedBuffer =
+    const imageBuffer =
       Buffer.from(
         imageBase64,
         "base64"
       );
-
-    let finalBuffer =
-      generatedBuffer;
-
-    const logoPath = path.join(
-      process.cwd(),
-      "public",
-      "brand",
-      "lbmedia-logo.png"
-    );
-
-    if (fs.existsSync(logoPath)) {
-      try {
-        const logoSource =
-          fs.readFileSync(
-            logoPath
-          );
-
-        const logoBuffer =
-          await sharp(logoSource)
-            .resize({
-              width: 260,
-              withoutEnlargement: true,
-            })
-            .png()
-            .toBuffer();
-
-        finalBuffer =
-          await sharp(
-            generatedBuffer
-          )
-            .composite([
-              {
-                input: logoBuffer,
-                gravity: "southeast",
-              },
-            ])
-            .png()
-            .toBuffer();
-      } catch (logoError) {
-        console.warn(
-          "LBMedia logo overlay skipped:",
-          logoError
-        );
-
-        /*
-         * Le logo est un bonus.
-         * S'il ne peut pas être incrusté,
-         * on conserve le visuel généré
-         * plutôt que de bloquer la V1.
-         */
-        finalBuffer =
-          generatedBuffer;
-      }
-    }
 
     const fileName =
       `${id}/${Date.now()}.png`;
@@ -239,7 +213,7 @@ CHARTE LBMEDIA :
       .from("news-visuals")
       .upload(
         fileName,
-        finalBuffer,
+        imageBuffer,
         {
           contentType: "image/png",
           cacheControl: "3600",
@@ -315,7 +289,9 @@ CHARTE LBMEDIA :
             ? error.message
             : "Erreur inconnue",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }
