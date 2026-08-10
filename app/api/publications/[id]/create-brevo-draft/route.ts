@@ -86,7 +86,28 @@ export async function POST(
       );
     }
 
-    if (!publication.content?.trim()) {
+    if (
+      publication.brevo_campaign_id
+    ) {
+      return NextResponse.json(
+        {
+          success: true,
+          alreadyExists: true,
+          message:
+            "Un brouillon Brevo existe déjà pour cette newsletter.",
+          brevo_campaign_id:
+            publication.brevo_campaign_id,
+          publication,
+        },
+        {
+          status: 200,
+        }
+      );
+    }
+
+    if (
+      !publication.content?.trim()
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -99,7 +120,9 @@ export async function POST(
       );
     }
 
-    if (!publication.subject?.trim()) {
+    if (
+      !publication.subject?.trim()
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -150,12 +173,15 @@ export async function POST(
       {
         method: "POST",
         headers: {
-          accept: "application/json",
+          accept:
+            "application/json",
           "api-key": apiKey,
           "Content-Type":
             "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(
+          payload
+        ),
         cache: "no-store",
       }
     );
@@ -177,7 +203,8 @@ export async function POST(
       console.error(
         "Brevo campaign creation failed",
         {
-          status: response.status,
+          status:
+            response.status,
           data,
           payload,
         }
@@ -190,8 +217,7 @@ export async function POST(
             "Brevo a refusé la création de la campagne.",
           status:
             response.status,
-          details:
-            data,
+          details: data,
         },
         {
           status:
@@ -229,6 +255,8 @@ export async function POST(
       .update({
         brevo_campaign_id:
           campaignId,
+        brevo_send_approved_at:
+          null,
         updated_at:
           new Date().toISOString(),
       })
@@ -255,6 +283,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
+      alreadyExists: false,
       message:
         "Brouillon de campagne Brevo créé.",
       brevo_campaign_id:
@@ -307,7 +336,9 @@ function buildHtmlContent(
       ? `
         <p style="margin:28px 0 0;">
           <a
-            href="${escapeHtml(linkUrl)}"
+            href="${escapeHtml(
+              linkUrl
+            )}"
             style="
               display:inline-block;
               padding:12px 20px;

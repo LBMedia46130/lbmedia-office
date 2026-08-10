@@ -84,6 +84,21 @@ export async function POST(
     }
 
     if (
+      publication.status === "published"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Cette campagne Brevo est déjà marquée comme envoyée.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (
       !publication.brevo_campaign_id
     ) {
       return NextResponse.json(
@@ -91,6 +106,21 @@ export async function POST(
           success: false,
           message:
             "Aucun brouillon Brevo n'existe encore pour cette newsletter.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (
+      !publication.brevo_send_approved_at
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "L'envoi Brevo n'a pas encore été explicitement autorisé.",
         },
         {
           status: 400,
