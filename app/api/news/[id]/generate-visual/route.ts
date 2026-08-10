@@ -235,7 +235,6 @@ FORMAT :
         prompt,
         size: "1536x1024",
         quality: "medium",
-        input_fidelity: "high",
       });
 
     const imageBase64 =
