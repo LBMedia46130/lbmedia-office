@@ -256,6 +256,11 @@ export default async function PlanningPage() {
       });
 
   if (error) {
+    console.error(
+      "PLANNING SUPABASE ERROR",
+      error
+    );
+
     throw new Error(
       `Impossible de charger le planning : ${error.message}`
     );
@@ -264,6 +269,25 @@ export default async function PlanningPage() {
   const publications =
     (data ??
       []) as PlanningPublication[];
+
+  console.log(
+    "PLANNING PUBLICATIONS",
+    publications.map(
+      (publication) => ({
+        id: publication.id,
+        news_id:
+          publication.news_id,
+        channel:
+          publication.channel,
+        status:
+          publication.status,
+        scheduled_at:
+          publication.scheduled_at,
+        published_at:
+          publication.published_at,
+      })
+    )
+  );
 
   const ready =
     publications.filter(
@@ -303,6 +327,22 @@ export default async function PlanningPage() {
         publication.status ===
         "failed"
     );
+
+  console.log(
+    "PLANNING COUNTS",
+    {
+      total:
+        publications.length,
+      ready: ready.length,
+      scheduled:
+        scheduled.length,
+      published:
+        published.length,
+      failed: failed.length,
+      invalidScheduled:
+        invalidScheduled.length,
+    }
+  );
 
   const overdue =
     scheduled.filter(
@@ -368,6 +408,18 @@ export default async function PlanningPage() {
       }
     );
 
+  console.log(
+    "PLANNING PERIODS",
+    {
+      overdue: overdue.length,
+      today: today.length,
+      thisWeek:
+        thisWeek.length,
+      later: later.length,
+      daysUntilSunday,
+    }
+  );
+
   return (
     <main className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-6xl px-6 py-10">
@@ -418,7 +470,9 @@ export default async function PlanningPage() {
           <PlanningSection
             title="En retard"
             description="Ces publications avaient une date prévue qui est maintenant dépassée."
-            publications={overdue}
+            publications={
+              overdue
+            }
             tone="warning"
           />
         ) : null}
@@ -434,7 +488,9 @@ export default async function PlanningPage() {
         <PlanningSection
           title="Cette semaine"
           description="Publications prévues d’ici dimanche."
-          publications={thisWeek}
+          publications={
+            thisWeek
+          }
           emptyMessage="Aucune autre publication prévue cette semaine."
         />
 
@@ -536,9 +592,7 @@ export default async function PlanningPage() {
             </h2>
 
             <p className="mt-1 text-sm text-red-800">
-              {
-                failed.length
-              }{" "}
+              {failed.length}{" "}
               publication
               {failed.length > 1
                 ? "s nécessitent"
@@ -680,7 +734,9 @@ function PlanningSection({
           {publications.map(
             (publication) => (
               <PublicationRow
-                key={publication.id}
+                key={
+                  publication.id
+                }
                 publication={
                   publication
                 }
