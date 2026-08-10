@@ -328,8 +328,25 @@ INTERDICTIONS ABSOLUES :
 - AUCUN LOGO ;
 - AUCUNE MARQUE ;
 - AUCUN FILIGRANE ;
+- AUCUN WIREFRAME ;
+- AUCUNE MAQUETTE D'INTERFACE ;
+- AUCUN SCHÉMA DE PAGE WEB ;
+- AUCUN DESSIN D'INTERFACE SUR PAPIER ;
+- AUCUNE CASE À COCHER ;
+- AUCUNE COCHE ;
+- AUCUN POINT D'INTERROGATION ;
+- AUCUN SYMBOLE GRAPHIQUE ;
+- AUCUN DIAGRAMME ;
+- AUCUN SCHÉMA FONCTIONNEL ;
 - éviter les accumulations d'icônes ;
-- éviter les compositions en plusieurs panneaux.
+- éviter les compositions en plusieurs panneaux ;
+- si des documents, carnets ou feuilles apparaissent dans la scène, ils doivent rester vierges ou présenter uniquement des formes abstraites non interprétables.
+
+IMPORTANT POUR LES DOCUMENTS ET OBJETS :
+
+Les documents, carnets, feuilles, écrans ou supports présents dans l'image servent uniquement à construire la scène.
+
+Ils ne doivent jamais devenir un moyen détourné d'afficher du texte, une interface, un wireframe, un diagramme, des coches, des symboles ou des éléments graphiques assimilables à une interface.
 
 Le résultat doit être une véritable IMAGE D'ILLUSTRATION ÉDITORIALE.
 
