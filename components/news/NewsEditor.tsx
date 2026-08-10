@@ -611,15 +611,24 @@ export default function NewsEditor({
         );
       }
 
+      const generatedImageUrl =
+        result.image_url ??
+        result.news?.image_url ??
+        "";
+
+      if (!generatedImageUrl) {
+        throw new Error(
+          "Le visuel a été généré mais son URL n’a pas été retournée."
+        );
+      }
+
       setImageUrl(
-        result.image_url ?? ""
+        generatedImageUrl
       );
 
       setMessage(
         "Visuel généré et enregistré. Vérifie-le avant utilisation."
       );
-
-      router.refresh();
     } catch (visualError) {
       setError(
         visualError instanceof Error
