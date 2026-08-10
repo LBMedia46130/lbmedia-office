@@ -170,6 +170,16 @@ export default function NewsEditor({
   ] = useState(false);
 
   const [
+    isGeneratingArticle,
+    setIsGeneratingArticle,
+  ] = useState(false);
+
+  const [
+    isGeneratingVisual,
+    setIsGeneratingVisual,
+  ] = useState(false);
+
+  const [
     isPublishingWordPressDraft,
     setIsPublishingWordPressDraft,
   ] = useState(false);
@@ -343,6 +353,102 @@ export default function NewsEditor({
     }
   }
 
+  async function generateArticle() {
+    const confirmed =
+      !content.trim() ||
+      window.confirm(
+        "Pénélope va rédiger ou améliorer l’article actuel et préparer ses éléments SEO/GEO. Le contenu actuel pourra être remplacé. Continuer ?"
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsGeneratingArticle(true);
+    setMessage(null);
+    setError(null);
+
+    try {
+      await saveEverything();
+
+      const response = await fetch(
+        `/api/news/${news.id}/generate-article`,
+        {
+          method: "POST",
+        }
+      );
+
+      const result =
+        await response.json();
+
+      if (
+        !response.ok ||
+        !result.success
+      ) {
+        throw new Error(
+          result.message ??
+            "Impossible de rédiger l’article."
+        );
+      }
+
+      if (result.news) {
+        setTitle(
+          result.news.title ?? ""
+        );
+
+        setContent(
+          result.news.content ?? ""
+        );
+      }
+
+      if (result.publication) {
+        setFocusKeyword(
+          result.publication.focus_keyword ??
+            ""
+        );
+
+        setSecondaryKeywords(
+          result.publication.secondary_keywords ??
+            ""
+        );
+
+        setSlug(
+          result.publication.slug ??
+            ""
+        );
+
+        setSeoTitle(
+          result.publication.seo_title ??
+            ""
+        );
+
+        setMetaDescription(
+          result.publication.meta_description ??
+            ""
+        );
+
+        setImageAlt(
+          result.publication.image_alt ??
+            ""
+        );
+      }
+
+      setMessage(
+        "Article et éléments SEO/GEO générés. Relis et ajuste avant de préparer les déclinaisons."
+      );
+
+      router.refresh();
+    } catch (generationError) {
+      setError(
+        generationError instanceof Error
+          ? generationError.message
+          : "Une erreur est survenue."
+      );
+    } finally {
+      setIsGeneratingArticle(false);
+    }
+  }
+
   async function generatePublication(
     publicationId: string
   ) {
@@ -446,6 +552,91 @@ export default function NewsEditor({
       setIsPreparingCommunication(
         false
       );
+    }
+  }
+
+  async function generateVisual() {
+    if (!title.trim()) {
+      setMessage(null);
+      setError(
+        "Le titre est obligatoire avant de générer le visuel."
+      );
+
+      return;
+    }
+
+    if (!content.trim()) {
+      setMessage(null);
+      setError(
+        "Rédige d’abord l’article avant de générer son visuel."
+      );
+
+      return;
+    }
+
+    const confirmed =
+      !imageUrl.trim() ||
+      window.confirm(
+        "Un visuel existe déjà pour cette actualité. Le nouveau visuel remplacera son URL dans LBMedia Office. Continuer ?"
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsGeneratingVisual(true);
+    setMessage(null);
+    setError(null);
+
+    try {
+      await saveEverything();
+
+      const response = await fetch(
+        `/api/news/${news.id}/generate-visual`,
+        {
+          method: "POST",
+        }
+      );
+
+      const result =
+        await response.json();
+
+      if (
+        !response.ok ||
+        !result.success
+      ) {
+        throw new Error(
+          result.message ??
+            "Impossible de générer le visuel."
+        );
+      }
+
+      const generatedImageUrl =
+        result.image_url ??
+        result.news?.image_url ??
+        "";
+
+      if (!generatedImageUrl) {
+        throw new Error(
+          "Le visuel a été généré mais son URL n’a pas été retournée."
+        );
+      }
+
+      setImageUrl(
+        generatedImageUrl
+      );
+
+      setMessage(
+        "Visuel généré et enregistré. Vérifie-le avant utilisation."
+      );
+    } catch (visualError) {
+      setError(
+        visualError instanceof Error
+          ? visualError.message
+          : "Une erreur est survenue."
+      );
+    } finally {
+      setIsGeneratingVisual(false);
     }
   }
 
@@ -752,6 +943,8 @@ export default function NewsEditor({
     isSaving ||
     isDeleting ||
     isPreparingCommunication ||
+    isGeneratingArticle ||
+    isGeneratingVisual ||
     isPublishingWordPressDraft ||
     isPublishingWordPressLive;
 
@@ -780,6 +973,20 @@ export default function NewsEditor({
             </p>
           </div>
 
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={
+                generateArticle
+              }
+              disabled={isBusy}
+              className="rounded-xl border border-indigo-300 bg-white px-5 py-3 text-sm font-semibold text-indigo-800 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isGeneratingArticle
+                ? "Rédaction en cours..."
+                : "Rédiger / optimiser l’article"}
+            </button>
+
           <button
             type="button"
             onClick={
@@ -792,6 +999,7 @@ export default function NewsEditor({
               ? "Préparation en cours..."
               : "Préparer les déclinaisons"}
           </button>
+          </div>
         </div>
       </div>
 
@@ -919,7 +1127,7 @@ export default function NewsEditor({
             </p>
 
             <p className="mt-1 text-sm leading-6 text-emerald-800">
-              Prépare ici les éléments nécessaires avant la mise en ligne dans WordPress et Rank Math.
+              Éléments préparés pour la mise en ligne dans WordPress et Rank Math.
             </p>
           </div>
 
@@ -1062,27 +1270,69 @@ export default function NewsEditor({
           </div>
         </div>
 
-        <div>
-          <label
-            htmlFor="imageUrl"
-            className="block text-sm font-semibold text-slate-900"
-          >
-            URL du visuel
-          </label>
+        <div className="rounded-2xl border border-sky-200 bg-sky-50 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-sky-950">
+                Visuel de l’article
+              </p>
 
-          <input
-            id="imageUrl"
-            type="url"
-            value={imageUrl}
-            onChange={(event) =>
-              setImageUrl(
-                event.target.value
-              )
-            }
-            disabled={isBusy}
-            placeholder="https://..."
-            className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-slate-950 disabled:opacity-60"
-          />
+              <p className="mt-1 text-sm leading-6 text-sky-800">
+                Génère un visuel éditorial à partir de l’article et des éléments SEO/GEO, puis vérifie-le avant utilisation.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={
+                generateVisual
+              }
+              disabled={isBusy}
+              className="rounded-xl bg-sky-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isGeneratingVisual
+                ? "Génération du visuel..."
+                : imageUrl.trim()
+                  ? "Regénérer le visuel"
+                  : "Générer le visuel"}
+            </button>
+          </div>
+
+          {imageUrl.trim() ? (
+            <div className="mt-5 overflow-hidden rounded-xl border border-sky-200 bg-white">
+              <img
+                src={imageUrl}
+                alt={
+                  imageAlt.trim() ||
+                  "Visuel de l’article"
+                }
+                className="h-auto w-full object-cover"
+              />
+            </div>
+          ) : null}
+
+          <div className="mt-5">
+            <label
+              htmlFor="imageUrl"
+              className="block text-sm font-semibold text-slate-900"
+            >
+              URL du visuel
+            </label>
+
+            <input
+              id="imageUrl"
+              type="url"
+              value={imageUrl}
+              onChange={(event) =>
+                setImageUrl(
+                  event.target.value
+                )
+              }
+              disabled={isBusy}
+              placeholder="https://..."
+              className="mt-2 w-full rounded-xl border border-sky-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-sky-700 disabled:opacity-60"
+            />
+          </div>
         </div>
 
         <div>
