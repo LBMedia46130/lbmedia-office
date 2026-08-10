@@ -310,15 +310,6 @@ export default function NewsEditor({
   }
 
   async function saveEverything() {
-    /*
-     * La publication technique WordPress
-     * est enregistrée en premier.
-     *
-     * C'est volontaire : la route news
-     * vérifie qu'une actualité planifiée
-     * possède déjà une date sur sa
-     * publication website.
-     */
     await syncWebsitePublication();
     await saveNews();
   }
@@ -365,7 +356,9 @@ export default function NewsEditor({
     }
 
     setIsGeneratingArticle(true);
-    setMessage(null);
+    setMessage(
+      "Pénélope rédige et optimise l’article, puis prépare ses éléments SEO/GEO..."
+    );
     setError(null);
 
     try {
@@ -439,6 +432,8 @@ export default function NewsEditor({
 
       router.refresh();
     } catch (generationError) {
+      setMessage(null);
+
       setError(
         generationError instanceof Error
           ? generationError.message
@@ -502,7 +497,9 @@ export default function NewsEditor({
     }
 
     setIsPreparingCommunication(true);
-    setMessage(null);
+    setMessage(
+      "Pénélope prépare les déclinaisons de l’actualité pour chaque support..."
+    );
     setError(null);
 
     try {
@@ -525,7 +522,7 @@ export default function NewsEditor({
         }
 
         setMessage(
-          `Préparation ${getChannelLabel(
+          `Pénélope prépare la déclinaison ${getChannelLabel(
             channel
           )}...`
         );
@@ -585,7 +582,9 @@ export default function NewsEditor({
     }
 
     setIsGeneratingVisual(true);
-    setMessage(null);
+    setMessage(
+      "Pénélope génère le visuel éditorial de l’article..."
+    );
     setError(null);
 
     try {
@@ -630,6 +629,8 @@ export default function NewsEditor({
         "Visuel généré et enregistré. Vérifie-le avant utilisation."
       );
     } catch (visualError) {
+      setMessage(null);
+
       setError(
         visualError instanceof Error
           ? visualError.message
@@ -720,11 +721,6 @@ export default function NewsEditor({
     setError(null);
 
     try {
-      /*
-       * Une publication immédiate
-       * ne doit pas rester marquée
-       * comme planifiée.
-       */
       const publicationResponse =
         await fetch(
           `/api/publications/${websitePublication.id}`,
@@ -836,12 +832,6 @@ export default function NewsEditor({
         );
       }
 
-      /*
-       * La route WordPress met déjà
-       * la publication website à
-       * "published". On aligne
-       * ensuite news.status.
-       */
       const syncNewsResponse =
         await fetch(
           `/api/news/${news.id}`,
@@ -953,6 +943,24 @@ export default function NewsEditor({
       websitePublication.wordpress_post_id
     );
 
+  const penelopeTitle =
+    isGeneratingArticle
+      ? "Pénélope rédige et optimise l’article"
+      : isPreparingCommunication
+        ? "Pénélope prépare les déclinaisons"
+        : isGeneratingVisual
+          ? "Pénélope prépare le visuel"
+          : "Préparer la communication";
+
+  const penelopeDescription =
+    isGeneratingArticle
+      ? "Elle travaille sur l’article principal et prépare ses éléments SEO/GEO."
+      : isPreparingCommunication
+        ? "Elle adapte l’actualité pour Brevo, Google Business, LinkedIn et Facebook."
+        : isGeneratingVisual
+          ? "Elle crée une illustration éditoriale à partir du contenu de l’article."
+          : "Pénélope peut travailler l’article, ses optimisations et ses déclinaisons pour les différents supports.";
+
   return (
     <form
       onSubmit={handleSubmit}
@@ -962,14 +970,11 @@ export default function NewsEditor({
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-indigo-950">
-              Préparer la communication
+              {penelopeTitle}
             </p>
 
             <p className="mt-1 text-sm leading-6 text-indigo-800">
-              Pénélope adapte cette
-              actualité pour Brevo,
-              Google Business,
-              LinkedIn et Facebook.
+              {penelopeDescription}
             </p>
           </div>
 
@@ -983,22 +988,22 @@ export default function NewsEditor({
               className="rounded-xl border border-indigo-300 bg-white px-5 py-3 text-sm font-semibold text-indigo-800 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isGeneratingArticle
-                ? "Rédaction en cours..."
+                ? "Rédaction et optimisation..."
                 : "Rédiger / optimiser l’article"}
             </button>
 
-          <button
-            type="button"
-            onClick={
-              prepareCommunication
-            }
-            disabled={isBusy}
-            className="rounded-xl bg-indigo-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isPreparingCommunication
-              ? "Préparation en cours..."
-              : "Préparer les déclinaisons"}
-          </button>
+            <button
+              type="button"
+              onClick={
+                prepareCommunication
+              }
+              disabled={isBusy}
+              className="rounded-xl bg-indigo-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isPreparingCommunication
+                ? "Création des déclinaisons..."
+                : "Préparer les déclinaisons"}
+            </button>
           </div>
         </div>
       </div>
