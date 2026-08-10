@@ -71,6 +71,10 @@ export type Publication = {
   seo_title: string | null;
   meta_description: string | null;
 
+  focus_keyword: string | null;
+  secondary_keywords: string | null;
+  image_alt: string | null;
+
   subject: string | null;
   preview_text: string | null;
 
@@ -99,6 +103,10 @@ export type UpdatePublicationInput = {
   slug?: string | null;
   seo_title?: string | null;
   meta_description?: string | null;
+
+  focus_keyword?: string | null;
+  secondary_keywords?: string | null;
+  image_alt?: string | null;
 
   subject?: string | null;
   preview_text?: string | null;

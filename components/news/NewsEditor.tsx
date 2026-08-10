@@ -124,6 +124,40 @@ export default function NewsEditor({
   const [sourceUrl, setSourceUrl] =
     useState(news.source_url ?? "");
 
+  const [focusKeyword, setFocusKeyword] =
+    useState(
+      websitePublication.focus_keyword ?? ""
+    );
+
+  const [
+    secondaryKeywords,
+    setSecondaryKeywords,
+  ] = useState(
+    websitePublication.secondary_keywords ?? ""
+  );
+
+  const [slug, setSlug] =
+    useState(
+      websitePublication.slug ?? ""
+    );
+
+  const [seoTitle, setSeoTitle] =
+    useState(
+      websitePublication.seo_title ?? ""
+    );
+
+  const [
+    metaDescription,
+    setMetaDescription,
+  ] = useState(
+    websitePublication.meta_description ?? ""
+  );
+
+  const [imageAlt, setImageAlt] =
+    useState(
+      websitePublication.image_alt ?? ""
+    );
+
   const [isSaving, setIsSaving] =
     useState(false);
 
@@ -227,6 +261,18 @@ export default function NewsEditor({
           status,
           link_url:
             sourceUrl.trim() || null,
+          focus_keyword:
+            focusKeyword.trim() || null,
+          secondary_keywords:
+            secondaryKeywords.trim() || null,
+          slug:
+            slug.trim() || null,
+          seo_title:
+            seoTitle.trim() || null,
+          meta_description:
+            metaDescription.trim() || null,
+          image_alt:
+            imageAlt.trim() || null,
           scheduled_at:
             status === "scheduled"
               ? toIsoDateTime(
@@ -505,6 +551,24 @@ export default function NewsEditor({
               scheduled_at: null,
               link_url:
                 sourceUrl.trim() ||
+                null,
+              focus_keyword:
+                focusKeyword.trim() ||
+                null,
+              secondary_keywords:
+                secondaryKeywords.trim() ||
+                null,
+              slug:
+                slug.trim() ||
+                null,
+              seo_title:
+                seoTitle.trim() ||
+                null,
+              meta_description:
+                metaDescription.trim() ||
+                null,
+              image_alt:
+                imageAlt.trim() ||
                 null,
             }),
           }
@@ -846,6 +910,156 @@ export default function NewsEditor({
             disabled={isBusy}
             className="mt-2 w-full resize-y rounded-xl border border-slate-300 px-4 py-3 text-sm leading-6 text-slate-950 outline-none transition focus:border-slate-950 disabled:opacity-60"
           />
+        </div>
+
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+          <div>
+            <p className="text-sm font-semibold text-emerald-950">
+              SEO / GEO
+            </p>
+
+            <p className="mt-1 text-sm leading-6 text-emerald-800">
+              Prépare ici les éléments nécessaires avant la mise en ligne dans WordPress et Rank Math.
+            </p>
+          </div>
+
+          <div className="mt-5 grid gap-5">
+            <div>
+              <label
+                htmlFor="focusKeyword"
+                className="block text-sm font-semibold text-slate-900"
+              >
+                Mot-clé principal
+              </label>
+
+              <input
+                id="focusKeyword"
+                type="text"
+                value={focusKeyword}
+                onChange={(event) =>
+                  setFocusKeyword(
+                    event.target.value
+                  )
+                }
+                disabled={isBusy}
+                placeholder="Ex. communication locale"
+                className="mt-2 w-full rounded-xl border border-emerald-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-emerald-700 disabled:opacity-60"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="secondaryKeywords"
+                className="block text-sm font-semibold text-slate-900"
+              >
+                Mots-clés secondaires
+              </label>
+
+              <input
+                id="secondaryKeywords"
+                type="text"
+                value={secondaryKeywords}
+                onChange={(event) =>
+                  setSecondaryKeywords(
+                    event.target.value
+                  )
+                }
+                disabled={isBusy}
+                placeholder="Séparés par des virgules"
+                className="mt-2 w-full rounded-xl border border-emerald-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-emerald-700 disabled:opacity-60"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="slug"
+                className="block text-sm font-semibold text-slate-900"
+              >
+                Slug
+              </label>
+
+              <input
+                id="slug"
+                type="text"
+                value={slug}
+                onChange={(event) =>
+                  setSlug(
+                    event.target.value
+                  )
+                }
+                disabled={isBusy}
+                placeholder="communication-locale-pme"
+                className="mt-2 w-full rounded-xl border border-emerald-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-emerald-700 disabled:opacity-60"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="seoTitle"
+                className="block text-sm font-semibold text-slate-900"
+              >
+                SEO title
+              </label>
+
+              <input
+                id="seoTitle"
+                type="text"
+                value={seoTitle}
+                onChange={(event) =>
+                  setSeoTitle(
+                    event.target.value
+                  )
+                }
+                disabled={isBusy}
+                className="mt-2 w-full rounded-xl border border-emerald-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-emerald-700 disabled:opacity-60"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="metaDescription"
+                className="block text-sm font-semibold text-slate-900"
+              >
+                Meta description
+              </label>
+
+              <textarea
+                id="metaDescription"
+                value={metaDescription}
+                onChange={(event) =>
+                  setMetaDescription(
+                    event.target.value
+                  )
+                }
+                rows={3}
+                disabled={isBusy}
+                className="mt-2 w-full resize-y rounded-xl border border-emerald-300 bg-white px-4 py-3 text-sm leading-6 text-slate-950 outline-none transition focus:border-emerald-700 disabled:opacity-60"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="imageAlt"
+                className="block text-sm font-semibold text-slate-900"
+              >
+                Texte ALT du visuel
+              </label>
+
+              <input
+                id="imageAlt"
+                type="text"
+                value={imageAlt}
+                onChange={(event) =>
+                  setImageAlt(
+                    event.target.value
+                  )
+                }
+                disabled={isBusy}
+                placeholder="Description utile et naturelle du visuel"
+                className="mt-2 w-full rounded-xl border border-emerald-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-emerald-700 disabled:opacity-60"
+              />
+            </div>
+          </div>
         </div>
 
         <div>

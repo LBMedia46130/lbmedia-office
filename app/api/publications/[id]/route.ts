@@ -214,6 +214,31 @@ export async function PATCH(
   }
 
   if (
+    body.focus_keyword !== undefined
+  ) {
+    updateData.focus_keyword =
+      body.focus_keyword?.trim() ||
+      null;
+  }
+
+  if (
+    body.secondary_keywords !==
+    undefined
+  ) {
+    updateData.secondary_keywords =
+      body.secondary_keywords?.trim() ||
+      null;
+  }
+
+  if (
+    body.image_alt !== undefined
+  ) {
+    updateData.image_alt =
+      body.image_alt?.trim() ||
+      null;
+  }
+
+  if (
     body.subject !== undefined
   ) {
     updateData.subject =
