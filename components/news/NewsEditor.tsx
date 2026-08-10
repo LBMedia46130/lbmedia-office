@@ -170,6 +170,11 @@ export default function NewsEditor({
   ] = useState(false);
 
   const [
+    isGeneratingArticle,
+    setIsGeneratingArticle,
+  ] = useState(false);
+
+  const [
     isPublishingWordPressDraft,
     setIsPublishingWordPressDraft,
   ] = useState(false);
@@ -340,6 +345,102 @@ export default function NewsEditor({
       );
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function generateArticle() {
+    const confirmed =
+      !content.trim() ||
+      window.confirm(
+        "Pénélope va rédiger ou améliorer l’article actuel et préparer ses éléments SEO/GEO. Le contenu actuel pourra être remplacé. Continuer ?"
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsGeneratingArticle(true);
+    setMessage(null);
+    setError(null);
+
+    try {
+      await saveEverything();
+
+      const response = await fetch(
+        `/api/news/${news.id}/generate-article`,
+        {
+          method: "POST",
+        }
+      );
+
+      const result =
+        await response.json();
+
+      if (
+        !response.ok ||
+        !result.success
+      ) {
+        throw new Error(
+          result.message ??
+            "Impossible de rédiger l’article."
+        );
+      }
+
+      if (result.news) {
+        setTitle(
+          result.news.title ?? ""
+        );
+
+        setContent(
+          result.news.content ?? ""
+        );
+      }
+
+      if (result.publication) {
+        setFocusKeyword(
+          result.publication.focus_keyword ??
+            ""
+        );
+
+        setSecondaryKeywords(
+          result.publication.secondary_keywords ??
+            ""
+        );
+
+        setSlug(
+          result.publication.slug ??
+            ""
+        );
+
+        setSeoTitle(
+          result.publication.seo_title ??
+            ""
+        );
+
+        setMetaDescription(
+          result.publication.meta_description ??
+            ""
+        );
+
+        setImageAlt(
+          result.publication.image_alt ??
+            ""
+        );
+      }
+
+      setMessage(
+        "Article et éléments SEO/GEO générés. Relis et ajuste avant de préparer les déclinaisons."
+      );
+
+      router.refresh();
+    } catch (generationError) {
+      setError(
+        generationError instanceof Error
+          ? generationError.message
+          : "Une erreur est survenue."
+      );
+    } finally {
+      setIsGeneratingArticle(false);
     }
   }
 
@@ -752,6 +853,7 @@ export default function NewsEditor({
     isSaving ||
     isDeleting ||
     isPreparingCommunication ||
+    isGeneratingArticle ||
     isPublishingWordPressDraft ||
     isPublishingWordPressLive;
 
@@ -780,6 +882,20 @@ export default function NewsEditor({
             </p>
           </div>
 
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={
+                generateArticle
+              }
+              disabled={isBusy}
+              className="rounded-xl border border-indigo-300 bg-white px-5 py-3 text-sm font-semibold text-indigo-800 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isGeneratingArticle
+                ? "Rédaction en cours..."
+                : "Rédiger / optimiser l’article"}
+            </button>
+
           <button
             type="button"
             onClick={
@@ -792,6 +908,7 @@ export default function NewsEditor({
               ? "Préparation en cours..."
               : "Préparer les déclinaisons"}
           </button>
+          </div>
         </div>
       </div>
 
@@ -919,7 +1036,7 @@ export default function NewsEditor({
             </p>
 
             <p className="mt-1 text-sm leading-6 text-emerald-800">
-              Prépare ici les éléments nécessaires avant la mise en ligne dans WordPress et Rank Math.
+              Éléments préparés pour la mise en ligne dans WordPress et Rank Math.
             </p>
           </div>
 
