@@ -7,6 +7,9 @@ import type {
 
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 type PlanningPublication = {
   id: string;
   news_id: string;
