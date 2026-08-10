@@ -13,11 +13,51 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+const visualSceneDirections = [
+  "une scène de terrain dans une entreprise locale, un commerce, un atelier ou un environnement professionnel réel, avec une activité crédible liée au sujet",
+  "une interaction naturelle entre deux ou trois professionnels ou entre un professionnel et un client, sans mise en scène artificielle",
+  "une composition éditoriale centrée sur un détail métier, des mains en action, des objets professionnels ou une situation concrète, sans montrer nécessairement de visage",
+  "une scène professionnelle en plan large montrant un véritable environnement de travail, avec de la profondeur et plusieurs niveaux de lecture",
+  "une scène extérieure ou semi-extérieure liée à une entreprise, un commerce, une rue, une vitrine ou une activité locale",
+  "une composition réaliste principalement construite autour d'objets, de matières et d'éléments professionnels cohérents avec le sujet, sans personnage principal",
+  "une situation de réflexion ou de décision montrée par une scène collective, une réunion informelle ou un échange professionnel, sans personne seule face à un écran",
+  "une métaphore visuelle réaliste et crédible du sujet, intégrée dans un environnement professionnel réel, sans tomber dans l'infographie ou l'illustration conceptuelle abstraite",
+];
+
+const visualFramings = [
+  "plan large avec environnement visible et profondeur",
+  "plan moyen naturel, comme une photographie éditoriale prise sur le vif",
+  "cadrage légèrement décentré avec sujet principal sur un tiers de l'image",
+  "vue immersive avec premier plan, plan intermédiaire et arrière-plan",
+  "cadrage rapproché sur l'action ou les détails métier",
+  "composition panoramique laissant respirer la scène",
+];
+
+const humanDirections = [
+  "la présence humaine est possible mais ne doit pas dominer automatiquement l'image",
+  "privilégier une scène sans personnage principal si le sujet peut être compris autrement",
+  "si des personnes apparaissent, privilégier plusieurs personnes en interaction plutôt qu'une personne seule",
+  "utiliser éventuellement une présence humaine partielle ou secondaire : mains, silhouettes, personnes de dos ou en arrière-plan",
+  "éviter les poses face caméra ; les personnes doivent sembler réellement occupées par leur activité",
+];
+
+function getRandomItem<T>(
+  items: T[]
+): T {
+  return items[
+    Math.floor(
+      Math.random() * items.length
+    )
+  ];
+}
+
 export async function POST(
   _request: Request,
   context: RouteContext
 ) {
-  if (!process.env.OPENAI_API_KEY) {
+  if (
+    !process.env.OPENAI_API_KEY
+  ) {
     return NextResponse.json(
       {
         success: false,
@@ -30,7 +70,8 @@ export async function POST(
     );
   }
 
-  const { id } = await context.params;
+  const { id } =
+    await context.params;
 
   try {
     const {
@@ -72,7 +113,10 @@ export async function POST(
         "id, focus_keyword, secondary_keywords, image_alt"
       )
       .eq("news_id", id)
-      .eq("channel", "website")
+      .eq(
+        "channel",
+        "website"
+      )
       .maybeSingle();
 
     if (publicationError) {
@@ -94,7 +138,9 @@ export async function POST(
       );
     }
 
-    if (!news.title?.trim()) {
+    if (
+      !news.title?.trim()
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -107,7 +153,9 @@ export async function POST(
       );
     }
 
-    if (!news.content?.trim()) {
+    if (
+      !news.content?.trim()
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -126,6 +174,21 @@ export async function POST(
         .replace(/\s+/g, " ")
         .slice(0, 1800);
 
+    const sceneDirection =
+      getRandomItem(
+        visualSceneDirections
+      );
+
+    const framingDirection =
+      getRandomItem(
+        visualFramings
+      );
+
+    const humanDirection =
+      getRandomItem(
+        humanDirections
+      );
+
     const prompt = `
 Créer UNE ILLUSTRATION ÉDITORIALE HORIZONTALE pour accompagner un article du site LBMedia.
 
@@ -136,15 +199,43 @@ CONTEXTE :
 ${articleExcerpt}
 
 THÈME PRINCIPAL :
-${websitePublication.focus_keyword || "communication d'entreprise locale"}
+${
+  websitePublication.focus_keyword ||
+  "communication d'entreprise locale"
+}
 
 INTENTION DU VISUEL :
-${websitePublication.image_alt || "illustrer simplement le sujet principal de l'article"}
+${
+  websitePublication.image_alt ||
+  "illustrer simplement le sujet principal de l'article"
+}
+
+DIRECTION VISUELLE À PRIVILÉGIER POUR CETTE IMAGE :
+
+- ${sceneDirection};
+- ${framingDirection};
+- ${humanDirection}.
+
+IMPORTANT — DIVERSITÉ ÉDITORIALE :
+
+Les visuels LBMedia doivent former une série éditoriale variée.
+Ne pas utiliser systématiquement la même recette visuelle d'un article à l'autre.
+
+ÉVITER EN PARTICULIER :
+- la personne seule assise devant un ordinateur portable ;
+- le professionnel pensif regardant son écran ;
+- le portrait générique d'un homme ou d'une femme dans un bureau ;
+- la même composition "personnage + laptop + bureau" ;
+- les scènes interchangeables de bureau sans rapport réel avec le sujet.
+
+Le sujet de l'article doit déterminer la scène.
+Chercher d'abord une situation, un environnement, une action ou une métaphore visuelle spécifique au contenu avant d'introduire éventuellement un personnage.
 
 DIRECTION ARTISTIQUE LBMEDIA :
+
 - créer une véritable scène éditoriale, pas une collection d'icônes ou d'objets 3D ;
 - rendu moderne, professionnel, élégant et crédible ;
-- privilégier un environnement réel ou semi-réaliste lié au sujet : entreprise locale, commerce, bureau, communication ou environnement professionnel ;
+- privilégier un environnement réel ou semi-réaliste lié au sujet : entreprise locale, commerce, activité professionnelle, environnement de travail ou situation concrète ;
 - composition suffisamment riche pour donner de la matière au visuel, tout en restant aérée ;
 - utiliser de la profondeur, de la perspective et une vraie mise en scène ;
 - 4 à 6 éléments visuels cohérents maximum ;
@@ -160,6 +251,7 @@ DIRECTION ARTISTIQUE LBMEDIA :
 - aucun logo nécessaire.
 
 INTERDICTIONS ABSOLUES :
+
 - AUCUN TEXTE ;
 - AUCUNE LETTRE ;
 - AUCUN MOT ;
@@ -184,7 +276,10 @@ INTERDICTIONS ABSOLUES :
 
 Le résultat doit être une véritable IMAGE D'ILLUSTRATION ÉDITORIALE.
 Elle doit donner envie de lire l'article et illustrer son idée principale sans chercher à résumer toutes les informations qu'il contient.
+
 Format horizontal, composition équilibrée, suffisamment riche mais aérée, facilement recadrable.
+
+Le choix de scène indiqué plus haut doit réellement influencer la composition finale afin d'obtenir un visuel différent des compositions éditoriales génériques habituelles.
 `.trim();
 
     const result =
@@ -196,7 +291,8 @@ Format horizontal, composition équilibrée, suffisamment riche mais aérée, fa
       });
 
     const imageBase64 =
-      result.data?.[0]?.b64_json;
+      result.data?.[0]
+        ?.b64_json;
 
     if (!imageBase64) {
       throw new Error(
@@ -221,8 +317,10 @@ Format horizontal, composition équilibrée, suffisamment riche mais aérée, fa
         fileName,
         imageBuffer,
         {
-          contentType: "image/png",
-          cacheControl: "3600",
+          contentType:
+            "image/png",
+          cacheControl:
+            "3600",
           upsert: false,
         }
       );
@@ -237,7 +335,9 @@ Format horizontal, composition équilibrée, suffisamment riche mais aérée, fa
       data: publicUrlData,
     } = supabaseAdmin.storage
       .from("news-visuals")
-      .getPublicUrl(fileName);
+      .getPublicUrl(
+        fileName
+      );
 
     const imageUrl =
       publicUrlData.publicUrl;
@@ -254,7 +354,8 @@ Format horizontal, composition équilibrée, suffisamment riche mais aérée, fa
     } = await supabaseAdmin
       .from("news")
       .update({
-        image_url: imageUrl,
+        image_url:
+          imageUrl,
         updated_at:
           new Date().toISOString(),
       })
@@ -276,8 +377,10 @@ Format horizontal, composition équilibrée, suffisamment riche mais aérée, fa
       success: true,
       message:
         "Visuel généré et enregistré.",
-      image_url: imageUrl,
-      news: updatedNews,
+      image_url:
+        imageUrl,
+      news:
+        updatedNews,
     });
   } catch (error) {
     console.error(
