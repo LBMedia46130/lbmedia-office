@@ -1,8 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import OpenAI, { toFile } from "openai";
+import OpenAI from "openai";
 import { NextResponse } from "next/server";
+import sharp from "sharp";
 
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
@@ -27,9 +28,7 @@ export async function POST(
         message:
           "La clé API OpenAI n'est pas configurée.",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 
@@ -48,16 +47,8 @@ export async function POST(
       .maybeSingle();
 
     if (newsError) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Impossible de charger l’actualité.",
-          error: newsError.message,
-        },
-        {
-          status: 500,
-        }
+      throw new Error(
+        newsError.message
       );
     }
 
@@ -68,9 +59,7 @@ export async function POST(
           message:
             "Actualité introuvable.",
         },
-        {
-          status: 404,
-        }
+        { status: 404 }
       );
     }
 
@@ -87,17 +76,8 @@ export async function POST(
       .maybeSingle();
 
     if (publicationError) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Impossible de charger les données éditoriales de l’article.",
-          error:
-            publicationError.message,
-        },
-        {
-          status: 500,
-        }
+      throw new Error(
+        publicationError.message
       );
     }
 
@@ -108,9 +88,7 @@ export async function POST(
           message:
             "La publication WordPress associée est introuvable.",
         },
-        {
-          status: 404,
-        }
+        { status: 404 }
       );
     }
 
@@ -119,11 +97,9 @@ export async function POST(
         {
           success: false,
           message:
-            "Le titre de l’actualité est obligatoire avant de générer le visuel.",
+            "Le titre est obligatoire avant de générer le visuel.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
@@ -134,42 +110,9 @@ export async function POST(
           message:
             "L’article doit être rédigé avant de générer son visuel.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
-
-    const logoPath = path.join(
-      process.cwd(),
-      "public",
-      "brand",
-      "lbmedia-logo.png"
-    );
-
-    if (!fs.existsSync(logoPath)) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Le logo officiel LBMedia est introuvable dans public/brand/lbmedia-logo.png.",
-        },
-        {
-          status: 500,
-        }
-      );
-    }
-
-    const logoBuffer =
-      fs.readFileSync(logoPath);
-
-    const logoFile = await toFile(
-      logoBuffer,
-      "lbmedia-logo.png",
-      {
-        type: "image/png",
-      }
-    );
 
     const articleExcerpt =
       news.content
@@ -178,12 +121,9 @@ export async function POST(
         .slice(0, 2200);
 
     const prompt = `
-Créer un visuel éditorial horizontal pour LBMedia à partir du sujet ci-dessous.
+Créer un visuel éditorial horizontal professionnel pour LBMedia.
 
-Le fichier image fourni est le LOGO OFFICIEL LBMedia.
-Il doit servir de référence de marque et être intégré au visuel sans être redessiné, réinterprété, déformé ou remplacé par un faux logo.
-
-Sujet de l'article :
+Sujet :
 ${news.title.trim()}
 
 Résumé :
@@ -196,42 +136,25 @@ Mots-clés secondaires :
 ${websitePublication.secondary_keywords || "Non définis"}
 
 Intention / texte ALT :
-${websitePublication.image_alt || "Illustration professionnelle du sujet de l'article"}
+${websitePublication.image_alt || "Illustration professionnelle du sujet"}
 
-CHARTE VISUELLE LBMEDIA À RESPECTER :
-- univers professionnel, moderne, sobre et premium ;
-- cohérence avec une agence de communication française travaillant avec des TPE et PME ;
-- couleurs dominantes : bleu nuit profond, bleu LBMedia, cyan / bleu lumineux et blanc ;
-- les accents violets restent possibles mais secondaires ;
-- composition nette, lisible et élégante ;
-- rendu éditorial, pas une banque d'images générique ;
+CHARTE LBMEDIA :
+- rendu moderne, professionnel, sobre et premium ;
+- adapté à une agence de communication française travaillant avec des TPE et PME ;
+- couleurs dominantes : bleu nuit profond, bleu, cyan / bleu lumineux et blanc ;
+- violet possible uniquement comme accent secondaire ;
+- composition claire, élégante et aérée ;
 - sujet principal immédiatement compréhensible ;
-- image suffisamment aérée pour rester exploitable dans les modèles du site et les communications LBMedia ;
-- éviter les compositions surchargées et les effets futuristes gratuits ;
-- éviter les clichés visuels marketing trop génériques.
-
-LOGO :
-- utiliser uniquement le logo LBMedia fourni ;
-- préserver son aspect et ses proportions ;
-- le placer de manière discrète mais clairement visible, idéalement dans une zone calme de la composition ;
-- ne jamais inventer une variante du logo ;
-- ne jamais transformer les lettres du logo ;
-- ne jamais ajouter d'autre marque ou logo.
-
-TEXTE :
-- aucun titre, slogan, mot, pseudo-interface ou texte généré dans l'image ;
-- le seul élément typographique autorisé est le logo LBMedia fourni.
-
-FORMAT :
-- visuel horizontal adapté à un article de site internet ;
-- composition permettant un recadrage raisonnable pour d'autres supports ;
-- aucun filigrane.
+- éviter l'esthétique banque d'images générique ;
+- éviter les clichés marketing et les effets futuristes gratuits ;
+- aucun texte, titre, slogan, logo, marque ou filigrane dans l'image ;
+- prévoir une zone visuellement calme dans l'angle inférieur droit afin d'y ajouter ensuite le logo LBMedia ;
+- format horizontal adapté à un article web et suffisamment souple pour un recadrage raisonnable.
 `.trim();
 
     const result =
-      await openai.images.edit({
+      await openai.images.generate({
         model: "gpt-image-2",
-        image: logoFile,
         prompt,
         size: "1536x1024",
         quality: "medium",
@@ -246,11 +169,66 @@ FORMAT :
       );
     }
 
-    const imageBuffer =
+    const generatedBuffer =
       Buffer.from(
         imageBase64,
         "base64"
       );
+
+    let finalBuffer =
+      generatedBuffer;
+
+    const logoPath = path.join(
+      process.cwd(),
+      "public",
+      "brand",
+      "lbmedia-logo.png"
+    );
+
+    if (fs.existsSync(logoPath)) {
+      try {
+        const logoSource =
+          fs.readFileSync(
+            logoPath
+          );
+
+        const logoBuffer =
+          await sharp(logoSource)
+            .resize({
+              width: 260,
+              withoutEnlargement: true,
+            })
+            .png()
+            .toBuffer();
+
+        finalBuffer =
+          await sharp(
+            generatedBuffer
+          )
+            .composite([
+              {
+                input: logoBuffer,
+                gravity: "southeast",
+              },
+            ])
+            .png()
+            .toBuffer();
+      } catch (logoError) {
+        console.warn(
+          "LBMedia logo overlay skipped:",
+          logoError
+        );
+
+        /*
+         * Le logo est un bonus.
+         * S'il ne peut pas être incrusté,
+         * on conserve le visuel généré
+         * plutôt que de bloquer la V1.
+         */
+        finalBuffer =
+          generatedBuffer;
+      }
+    }
 
     const fileName =
       `${id}/${Date.now()}.png`;
@@ -261,7 +239,7 @@ FORMAT :
       .from("news-visuals")
       .upload(
         fileName,
-        imageBuffer,
+        finalBuffer,
         {
           contentType: "image/png",
           cacheControl: "3600",
@@ -290,9 +268,6 @@ FORMAT :
       );
     }
 
-    const now =
-      new Date().toISOString();
-
     const {
       data: updatedNews,
       error: updateError,
@@ -300,7 +275,8 @@ FORMAT :
       .from("news")
       .update({
         image_url: imageUrl,
-        updated_at: now,
+        updated_at:
+          new Date().toISOString(),
       })
       .eq("id", id)
       .select("*")
@@ -319,7 +295,7 @@ FORMAT :
     return NextResponse.json({
       success: true,
       message:
-        "Visuel LBMedia généré et enregistré.",
+        "Visuel généré et enregistré.",
       image_url: imageUrl,
       news: updatedNews,
     });
@@ -339,9 +315,7 @@ FORMAT :
             ? error.message
             : "Erreur inconnue",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }
