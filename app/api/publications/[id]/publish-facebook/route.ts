@@ -8,6 +8,16 @@ type RouteContext = {
   }>;
 };
 
+type FacebookPublication = {
+  id: string;
+  news_id: string;
+  channel: string;
+  content: string;
+  link_url: string | null;
+  status: string;
+  published_at: string | null;
+};
+
 export async function POST(
   _request: Request,
   context: RouteContext
@@ -39,7 +49,15 @@ export async function POST(
       error: publicationError,
     } = await supabaseAdmin
       .from("publications")
-      .select("*")
+      .select(`
+        id,
+        news_id,
+        channel,
+        content,
+        link_url,
+        status,
+        published_at
+      `)
       .eq("id", id)
       .maybeSingle();
 
@@ -71,8 +89,12 @@ export async function POST(
       );
     }
 
+    const facebookPublication =
+      publication as FacebookPublication;
+
     if (
-      publication.channel !== "facebook"
+      facebookPublication.channel !==
+      "facebook"
     ) {
       return NextResponse.json(
         {
@@ -86,7 +108,43 @@ export async function POST(
       );
     }
 
-    if (!publication.content?.trim()) {
+    if (
+      facebookPublication.status ===
+      "published"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Cette publication Facebook est déjà marquée comme publiée.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (
+      facebookPublication.status !==
+        "ready" &&
+      facebookPublication.status !==
+        "scheduled"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "La publication Facebook doit d'abord être validée.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (
+      !facebookPublication.content?.trim()
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -99,92 +157,212 @@ export async function POST(
       );
     }
 
+    const {
+      data: news,
+      error: newsError,
+    } = await supabaseAdmin
+      .from("news")
+      .select(`
+        id,
+        image_url
+      `)
+      .eq(
+        "id",
+        facebookPublication.news_id
+      )
+      .maybeSingle();
+
+    if (newsError) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Impossible de charger le visuel associé à l'actualité.",
+          error:
+            newsError.message,
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
     const messageParts = [
-      publication.content.trim(),
+      facebookPublication.content.trim(),
     ];
 
-    if (publication.link_url?.trim()) {
+    if (
+      facebookPublication.link_url?.trim()
+    ) {
       messageParts.push(
-        publication.link_url.trim()
+        facebookPublication.link_url.trim()
       );
     }
 
     const message =
       messageParts.join("\n\n");
 
-    const body =
-      new URLSearchParams();
-
-    body.set("message", message);
-    body.set(
-      "access_token",
-      accessToken
-    );
-
-    const response = await fetch(
-      `https://graph.facebook.com/v26.0/${pageId}/feed`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type":
-            "application/x-www-form-urlencoded",
-        },
-        body: body.toString(),
-        cache: "no-store",
-      }
-    );
-
-    const rawResponse =
-      await response.text();
+    const imageUrl =
+      news?.image_url?.trim() ||
+      null;
 
     let metaData: unknown = null;
 
-    try {
-      metaData = rawResponse
-        ? JSON.parse(rawResponse)
-        : null;
-    } catch {
-      metaData = rawResponse;
-    }
+    if (imageUrl) {
+      const body =
+        new URLSearchParams();
 
-    if (!response.ok) {
-      console.error(
-        "Facebook publication failed",
+      body.set(
+        "url",
+        imageUrl
+      );
+
+      body.set(
+        "caption",
+        message
+      );
+
+      body.set(
+        "access_token",
+        accessToken
+      );
+
+      const response = await fetch(
+        `https://graph.facebook.com/v26.0/${pageId}/photos`,
         {
-          status: response.status,
-          metaData,
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/x-www-form-urlencoded",
+          },
+          body: body.toString(),
+          cache: "no-store",
         }
       );
 
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Meta a refusé la publication Facebook.",
-          status:
-            response.status,
-          details:
+      const rawResponse =
+        await response.text();
+
+      try {
+        metaData = rawResponse
+          ? JSON.parse(
+              rawResponse
+            )
+          : null;
+      } catch {
+        metaData =
+          rawResponse;
+      }
+
+      if (!response.ok) {
+        console.error(
+          "Facebook photo publication failed",
+          {
+            status:
+              response.status,
             metaData,
-        },
+          }
+        );
+
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Meta a refusé la publication Facebook avec visuel.",
+            status:
+              response.status,
+            details:
+              metaData,
+          },
+          {
+            status:
+              response.status,
+          }
+        );
+      }
+    } else {
+      const body =
+        new URLSearchParams();
+
+      body.set(
+        "message",
+        message
+      );
+
+      body.set(
+        "access_token",
+        accessToken
+      );
+
+      const response = await fetch(
+        `https://graph.facebook.com/v26.0/${pageId}/feed`,
         {
-          status:
-            response.status,
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/x-www-form-urlencoded",
+          },
+          body: body.toString(),
+          cache: "no-store",
         }
       );
+
+      const rawResponse =
+        await response.text();
+
+      try {
+        metaData = rawResponse
+          ? JSON.parse(
+              rawResponse
+            )
+          : null;
+      } catch {
+        metaData =
+          rawResponse;
+      }
+
+      if (!response.ok) {
+        console.error(
+          "Facebook publication failed",
+          {
+            status:
+              response.status,
+            metaData,
+          }
+        );
+
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Meta a refusé la publication Facebook.",
+            status:
+              response.status,
+            details:
+              metaData,
+          },
+          {
+            status:
+              response.status,
+          }
+        );
+      }
     }
 
     const data =
       metaData as {
         id?: string;
+        post_id?: string;
       } | null;
 
-    const publishedAt =
-      new Date().toISOString();
-
     const facebookPostId =
-      typeof data?.id === "string"
-        ? data.id
-        : null;
+      typeof data?.post_id ===
+      "string"
+        ? data.post_id
+        : typeof data?.id ===
+            "string"
+          ? data.id
+          : null;
 
     const publishedUrl =
       facebookPostId
@@ -194,6 +372,9 @@ export async function POST(
           )}`
         : null;
 
+    const publishedAt =
+      new Date().toISOString();
+
     const {
       data: updatedPublication,
       error: updateError,
@@ -201,9 +382,14 @@ export async function POST(
       .from("publications")
       .update({
         status: "published",
-        published_at: publishedAt,
-        published_url: publishedUrl,
-        updated_at: publishedAt,
+        published_at:
+          publishedAt,
+        published_url:
+          publishedUrl,
+        scheduled_at:
+          null,
+        updated_at:
+          publishedAt,
       })
       .eq("id", id)
       .select("*")
@@ -229,7 +415,9 @@ export async function POST(
     return NextResponse.json({
       success: true,
       message:
-        "Publication Facebook effectuée.",
+        imageUrl
+          ? "Publication Facebook avec visuel effectuée."
+          : "Publication Facebook effectuée.",
       facebook_post_id:
         facebookPostId,
       publication:
