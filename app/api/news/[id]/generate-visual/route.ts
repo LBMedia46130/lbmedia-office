@@ -14,31 +14,31 @@ const openai = new OpenAI({
 });
 
 const visualSceneDirections = [
-  "une scène de terrain dans une entreprise locale, un commerce, un atelier ou un environnement professionnel réel, avec une activité crédible liée au sujet",
-  "une interaction naturelle entre deux ou trois professionnels ou entre un professionnel et un client, sans mise en scène artificielle",
-  "une composition éditoriale centrée sur un détail métier, des mains en action, des objets professionnels ou une situation concrète, sans montrer nécessairement de visage",
-  "une scène professionnelle en plan large montrant un véritable environnement de travail, avec de la profondeur et plusieurs niveaux de lecture",
-  "une scène extérieure ou semi-extérieure liée à une entreprise, un commerce, une rue, une vitrine ou une activité locale",
-  "une composition réaliste principalement construite autour d'objets, de matières et d'éléments professionnels cohérents avec le sujet, sans personnage principal",
-  "une situation de réflexion ou de décision montrée par une scène collective, une réunion informelle ou un échange professionnel, sans personne seule face à un écran",
-  "une métaphore visuelle réaliste et crédible du sujet, intégrée dans un environnement professionnel réel, sans tomber dans l'infographie ou l'illustration conceptuelle abstraite",
+  "une scène de terrain dans une entreprise locale, un commerce, un atelier ou un environnement professionnel réel, avec une activité crédible directement liée au sujet",
+  "une interaction naturelle entre deux ou trois professionnels ou entre un professionnel et un client, dans une situation concrète directement liée au sujet",
+  "une composition éditoriale centrée sur une action métier, des mains en action, des documents, des objets ou des éléments professionnels ayant un rapport direct avec le sujet",
+  "une scène professionnelle en plan large montrant un véritable environnement de travail ou commercial, avec de la profondeur et plusieurs niveaux de lecture",
+  "une scène extérieure ou semi-extérieure liée à une entreprise locale, un commerce, une vitrine, une activité ou un parcours client",
+  "une composition réaliste principalement construite autour d'objets, de matières, de documents et d'éléments professionnels spécifiques au sujet, sans personnage principal",
+  "une situation de réflexion ou de décision montrée par une scène collective ou un échange professionnel concret, sans personne seule face à un écran",
+  "une métaphore visuelle réaliste du problème ou de la décision évoquée dans l'article, intégrée dans un environnement professionnel crédible",
 ];
 
 const visualFramings = [
   "plan large avec environnement visible et profondeur",
   "plan moyen naturel, comme une photographie éditoriale prise sur le vif",
-  "cadrage légèrement décentré avec sujet principal sur un tiers de l'image",
+  "cadrage légèrement décentré avec le sujet principal placé sur un tiers de l'image",
   "vue immersive avec premier plan, plan intermédiaire et arrière-plan",
-  "cadrage rapproché sur l'action ou les détails métier",
+  "cadrage rapproché sur une action, des mains, des documents ou des détails métier",
   "composition panoramique laissant respirer la scène",
 ];
 
 const humanDirections = [
-  "la présence humaine est possible mais ne doit pas dominer automatiquement l'image",
-  "privilégier une scène sans personnage principal si le sujet peut être compris autrement",
-  "si des personnes apparaissent, privilégier plusieurs personnes en interaction plutôt qu'une personne seule",
-  "utiliser éventuellement une présence humaine partielle ou secondaire : mains, silhouettes, personnes de dos ou en arrière-plan",
-  "éviter les poses face caméra ; les personnes doivent sembler réellement occupées par leur activité",
+  "la présence humaine est possible mais ne doit pas être le sujet automatique de l'image",
+  "privilégier une scène sans personnage principal lorsque l'idée peut être exprimée plus précisément par une situation, un lieu ou une action",
+  "si des personnes apparaissent, privilégier une interaction réelle entre plusieurs personnes plutôt qu'une personne seule",
+  "utiliser éventuellement une présence humaine partielle ou secondaire : mains, silhouettes, personnes de dos ou personnages en arrière-plan",
+  "éviter les poses face caméra ; les personnes doivent sembler réellement occupées par une activité liée au sujet",
 ];
 
 function getRandomItem<T>(
@@ -110,7 +110,7 @@ export async function POST(
     } = await supabaseAdmin
       .from("publications")
       .select(
-        "id, focus_keyword, secondary_keywords, image_alt"
+        "id, focus_keyword, secondary_keywords"
       )
       .eq("news_id", id)
       .eq(
@@ -172,7 +172,7 @@ export async function POST(
       news.content
         .trim()
         .replace(/\s+/g, " ")
-        .slice(0, 1800);
+        .slice(0, 2200);
 
     const sceneDirection =
       getRandomItem(
@@ -195,7 +195,7 @@ Créer UNE ILLUSTRATION ÉDITORIALE HORIZONTALE pour accompagner un article du s
 SUJET DE L'ARTICLE :
 ${news.title.trim()}
 
-CONTEXTE :
+CONTENU DE RÉFÉRENCE :
 ${articleExcerpt}
 
 THÈME PRINCIPAL :
@@ -204,51 +204,78 @@ ${
   "communication d'entreprise locale"
 }
 
-INTENTION DU VISUEL :
+MOTS-CLÉS COMPLÉMENTAIRES :
 ${
-  websitePublication.image_alt ||
-  "illustrer simplement le sujet principal de l'article"
+  websitePublication.secondary_keywords ||
+  "entreprise locale, communication, activité professionnelle"
 }
 
-DIRECTION VISUELLE À PRIVILÉGIER POUR CETTE IMAGE :
+OBJECTIF :
+
+Comprendre d'abord l'idée centrale de l'article.
+
+Imaginer ensuite UNE situation visuelle précise qui représente cette idée.
+
+Ne pas simplement illustrer les mots-clés.
+Ne pas créer une scène professionnelle générique.
+
+La scène doit avoir un rapport évident avec le problème, la décision, l'action ou la situation concrète abordée dans l'article.
+
+DIRECTION VISUELLE POUR CETTE GÉNÉRATION :
 
 - ${sceneDirection};
 - ${framingDirection};
 - ${humanDirection}.
 
-IMPORTANT — DIVERSITÉ ÉDITORIALE :
+DIVERSITÉ ÉDITORIALE :
 
-Les visuels LBMedia doivent former une série éditoriale variée.
-Ne pas utiliser systématiquement la même recette visuelle d'un article à l'autre.
+Les illustrations LBMedia doivent former une collection variée.
+
+Chaque article doit pouvoir avoir son propre univers visuel en fonction de son sujet.
+
+Avant de composer l'image, identifier mentalement :
+1. quel est le problème concret traité par l'article ;
+2. quelle situation réelle pourrait représenter ce problème ;
+3. quels éléments visuels permettraient de comprendre cette situation sans aucun texte.
+
+Choisir cette situation plutôt qu'une représentation générique du travail de bureau.
 
 ÉVITER EN PARTICULIER :
-- la personne seule assise devant un ordinateur portable ;
-- le professionnel pensif regardant son écran ;
-- le portrait générique d'un homme ou d'une femme dans un bureau ;
-- la même composition "personnage + laptop + bureau" ;
-- les scènes interchangeables de bureau sans rapport réel avec le sujet.
 
-Le sujet de l'article doit déterminer la scène.
-Chercher d'abord une situation, un environnement, une action ou une métaphore visuelle spécifique au contenu avant d'introduire éventuellement un personnage.
+- une personne seule devant un ordinateur portable ;
+- une personne qui regarde ou manipule simplement un smartphone ;
+- un professionnel pensif devant son écran ;
+- deux personnes regardant ensemble un ordinateur ou un téléphone sans autre action significative ;
+- un portrait générique dans un bureau ;
+- la composition classique personnage + laptop + tasse ;
+- la composition personnage + smartphone + laptop ;
+- les réunions génériques autour d'un ordinateur ;
+- les scènes interchangeables de coworking ;
+- les décors de bureau sans rapport précis avec l'article.
+
+Un ordinateur ou un smartphone peut apparaître comme élément secondaire si la scène l'exige réellement, mais il ne doit pas constituer automatiquement le centre de l'image.
 
 DIRECTION ARTISTIQUE LBMEDIA :
 
-- créer une véritable scène éditoriale, pas une collection d'icônes ou d'objets 3D ;
+- créer une véritable scène éditoriale ;
 - rendu moderne, professionnel, élégant et crédible ;
-- privilégier un environnement réel ou semi-réaliste lié au sujet : entreprise locale, commerce, activité professionnelle, environnement de travail ou situation concrète ;
-- composition suffisamment riche pour donner de la matière au visuel, tout en restant aérée ;
-- utiliser de la profondeur, de la perspective et une vraie mise en scène ;
+- environnement réel ou semi-réaliste ;
+- privilégier les entreprises locales, commerces, ateliers, lieux professionnels, interactions clients, documents, objets et situations concrètes lorsque cela correspond au sujet ;
+- composition suffisamment riche mais aérée ;
+- profondeur, perspective et vraie mise en scène ;
 - 4 à 6 éléments visuels cohérents maximum ;
-- faire comprendre l'idée principale de l'article par la scène et non par des pictogrammes ;
+- faire comprendre l'idée principale par la scène ;
 - palette dominée par le bleu nuit profond, le bleu, le cyan / bleu lumineux et le blanc ;
-- les couleurs LBMedia doivent guider l'ambiance sans donner l'impression d'un filtre bleu uniforme ;
-- lumière soignée, contrastes élégants et détails réalistes ;
-- rendu photographique ou illustration éditoriale réaliste haut de gamme ;
-- privilégier un résultat crédible pour le site d'une agence de communication ;
-- le visuel doit avoir assez de personnalité pour attirer l'œil dans une page d'actualité ;
+- utiliser les couleurs LBMedia comme ambiance subtile, jamais comme filtre bleu uniforme ;
+- lumière naturelle ou professionnelle soignée ;
+- contrastes élégants ;
+- détails réalistes ;
+- rendu photographique éditorial haut de gamme ;
+- image crédible pour le site d'une agence de communication ;
+- suffisamment de personnalité pour attirer l'œil dans une page d'actualité ;
+- éviter le rendu publicitaire artificiel ou la photographie de banque d'images trop parfaite ;
 - éviter absolument le rendu jouet, plastique, cartoon, pictogrammes 3D ou illustration SaaS ;
-- éviter les compositions trop minimalistes avec seulement deux ou trois objets isolés sur un fond vide ;
-- aucun logo nécessaire.
+- éviter les compositions minimalistes constituées de quelques objets isolés sur un fond vide.
 
 INTERDICTIONS ABSOLUES :
 
@@ -275,11 +302,17 @@ INTERDICTIONS ABSOLUES :
 - éviter les compositions en plusieurs panneaux.
 
 Le résultat doit être une véritable IMAGE D'ILLUSTRATION ÉDITORIALE.
-Elle doit donner envie de lire l'article et illustrer son idée principale sans chercher à résumer toutes les informations qu'il contient.
 
-Format horizontal, composition équilibrée, suffisamment riche mais aérée, facilement recadrable.
+Elle doit donner envie de lire l'article et représenter UNE idée forte issue du contenu, plutôt que chercher à résumer l'ensemble de l'article.
 
-Le choix de scène indiqué plus haut doit réellement influencer la composition finale afin d'obtenir un visuel différent des compositions éditoriales génériques habituelles.
+Format horizontal.
+Composition équilibrée.
+Image suffisamment riche mais aérée.
+Facilement recadrable.
+
+IMPORTANT :
+Le concept de l'image doit être choisi à partir du contenu réel de l'article.
+Ne pas utiliser une scène de bureau générique comme solution par défaut.
 `.trim();
 
     const result =
