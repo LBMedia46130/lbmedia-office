@@ -175,6 +175,11 @@ export default function NewsEditor({
   ] = useState(false);
 
   const [
+    isGeneratingVisual,
+    setIsGeneratingVisual,
+  ] = useState(false);
+
+  const [
     isPublishingWordPressDraft,
     setIsPublishingWordPressDraft,
   ] = useState(false);
@@ -550,6 +555,82 @@ export default function NewsEditor({
     }
   }
 
+  async function generateVisual() {
+    if (!title.trim()) {
+      setMessage(null);
+      setError(
+        "Le titre est obligatoire avant de générer le visuel."
+      );
+
+      return;
+    }
+
+    if (!content.trim()) {
+      setMessage(null);
+      setError(
+        "Rédige d’abord l’article avant de générer son visuel."
+      );
+
+      return;
+    }
+
+    const confirmed =
+      !imageUrl.trim() ||
+      window.confirm(
+        "Un visuel existe déjà pour cette actualité. Le nouveau visuel remplacera son URL dans LBMedia Office. Continuer ?"
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsGeneratingVisual(true);
+    setMessage(null);
+    setError(null);
+
+    try {
+      await saveEverything();
+
+      const response = await fetch(
+        `/api/news/${news.id}/generate-visual`,
+        {
+          method: "POST",
+        }
+      );
+
+      const result =
+        await response.json();
+
+      if (
+        !response.ok ||
+        !result.success
+      ) {
+        throw new Error(
+          result.message ??
+            "Impossible de générer le visuel."
+        );
+      }
+
+      setImageUrl(
+        result.image_url ?? ""
+      );
+
+      setMessage(
+        "Visuel généré et enregistré. Vérifie-le avant utilisation."
+      );
+
+      router.refresh();
+    } catch (visualError) {
+      setError(
+        visualError instanceof Error
+          ? visualError.message
+          : "Une erreur est survenue."
+      );
+    } finally {
+      setIsGeneratingVisual(false);
+    }
+  }
+
   async function sendToWordPressDraft() {
     if (!content.trim()) {
       setMessage(null);
@@ -854,6 +935,7 @@ export default function NewsEditor({
     isDeleting ||
     isPreparingCommunication ||
     isGeneratingArticle ||
+    isGeneratingVisual ||
     isPublishingWordPressDraft ||
     isPublishingWordPressLive;
 
@@ -1179,27 +1261,69 @@ export default function NewsEditor({
           </div>
         </div>
 
-        <div>
-          <label
-            htmlFor="imageUrl"
-            className="block text-sm font-semibold text-slate-900"
-          >
-            URL du visuel
-          </label>
+        <div className="rounded-2xl border border-sky-200 bg-sky-50 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-sky-950">
+                Visuel de l’article
+              </p>
 
-          <input
-            id="imageUrl"
-            type="url"
-            value={imageUrl}
-            onChange={(event) =>
-              setImageUrl(
-                event.target.value
-              )
-            }
-            disabled={isBusy}
-            placeholder="https://..."
-            className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-slate-950 disabled:opacity-60"
-          />
+              <p className="mt-1 text-sm leading-6 text-sky-800">
+                Génère un visuel éditorial à partir de l’article et des éléments SEO/GEO, puis vérifie-le avant utilisation.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={
+                generateVisual
+              }
+              disabled={isBusy}
+              className="rounded-xl bg-sky-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isGeneratingVisual
+                ? "Génération du visuel..."
+                : imageUrl.trim()
+                  ? "Regénérer le visuel"
+                  : "Générer le visuel"}
+            </button>
+          </div>
+
+          {imageUrl.trim() ? (
+            <div className="mt-5 overflow-hidden rounded-xl border border-sky-200 bg-white">
+              <img
+                src={imageUrl}
+                alt={
+                  imageAlt.trim() ||
+                  "Visuel de l’article"
+                }
+                className="h-auto w-full object-cover"
+              />
+            </div>
+          ) : null}
+
+          <div className="mt-5">
+            <label
+              htmlFor="imageUrl"
+              className="block text-sm font-semibold text-slate-900"
+            >
+              URL du visuel
+            </label>
+
+            <input
+              id="imageUrl"
+              type="url"
+              value={imageUrl}
+              onChange={(event) =>
+                setImageUrl(
+                  event.target.value
+                )
+              }
+              disabled={isBusy}
+              placeholder="https://..."
+              className="mt-2 w-full rounded-xl border border-sky-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-sky-700 disabled:opacity-60"
+            />
+          </div>
         </div>
 
         <div>
