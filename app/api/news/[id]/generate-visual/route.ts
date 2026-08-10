@@ -19,14 +19,14 @@ const visualSceneDirections = [
   "une composition éditoriale centrée sur une action métier, des mains en action, des documents, des objets ou des éléments professionnels ayant un rapport direct avec le sujet",
   "une scène professionnelle en plan large montrant un véritable environnement de travail ou commercial, avec de la profondeur et plusieurs niveaux de lecture",
   "une scène extérieure ou semi-extérieure liée à une entreprise locale, un commerce, une vitrine, une activité ou un parcours client",
-  "une composition réaliste principalement construite autour d'objets, de matières, de documents et d'éléments professionnels spécifiques au sujet, sans personnage principal",
+  "une composition principalement construite autour d'objets, de matières, de documents et d'éléments professionnels spécifiques au sujet, sans personnage principal",
   "une situation de réflexion ou de décision montrée par une scène collective ou un échange professionnel concret, sans personne seule face à un écran",
-  "une métaphore visuelle réaliste du problème ou de la décision évoquée dans l'article, intégrée dans un environnement professionnel crédible",
+  "une métaphore visuelle crédible du problème ou de la décision évoquée dans l'article, intégrée dans un environnement professionnel cohérent",
 ];
 
 const visualFramings = [
   "plan large avec environnement visible et profondeur",
-  "plan moyen naturel, comme une photographie éditoriale prise sur le vif",
+  "plan moyen naturel avec une composition éditoriale travaillée",
   "cadrage légèrement décentré avec le sujet principal placé sur un tiers de l'image",
   "vue immersive avec premier plan, plan intermédiaire et arrière-plan",
   "cadrage rapproché sur une action, des mains, des documents ou des détails métier",
@@ -227,9 +227,35 @@ DIRECTION VISUELLE POUR CETTE GÉNÉRATION :
 - ${framingDirection};
 - ${humanDirection}.
 
+STYLE VISUEL LBMEDIA :
+
+Créer une ILLUSTRATION ÉDITORIALE SEMI-RÉALISTE HAUT DE GAMME.
+
+Le rendu doit se situer entre :
+- une photographie éditoriale ;
+- une illustration numérique contemporaine ;
+- une image de magazine professionnel.
+
+L'image doit rester crédible et humaine, mais elle ne doit PAS donner l'impression d'être une photographie brute ou une photo issue d'une banque d'images.
+
+Rechercher :
+- des formes légèrement simplifiées et élégantes ;
+- des textures travaillées ;
+- une lumière éditoriale subtile ;
+- des volumes doux ;
+- une profondeur naturelle ;
+- une légère stylisation des personnages et des décors ;
+- une composition graphique plus travaillée qu'une photographie classique ;
+- une identité visuelle contemporaine et cohérente d'un article LBMedia à l'autre.
+
+Les personnages, lorsqu'ils sont présents, doivent rester naturels mais légèrement stylisés.
+Les décors doivent être crédibles sans chercher le photoréalisme absolu.
+
+L'image doit immédiatement être perçue comme une ILLUSTRATION ÉDITORIALE et non comme une photographie documentaire.
+
 DIVERSITÉ ÉDITORIALE :
 
-Les illustrations LBMedia doivent former une collection variée.
+Les illustrations LBMedia doivent former une collection variée tout en conservant une même famille graphique.
 
 Chaque article doit pouvoir avoir son propre univers visuel en fonction de son sujet.
 
@@ -251,29 +277,33 @@ Choisir cette situation plutôt qu'une représentation générique du travail de
 - la composition personnage + smartphone + laptop ;
 - les réunions génériques autour d'un ordinateur ;
 - les scènes interchangeables de coworking ;
-- les décors de bureau sans rapport précis avec l'article.
+- les décors de bureau sans rapport précis avec l'article ;
+- l'esthétique de photographie corporate de banque d'images ;
+- le photoréalisme absolu ;
+- les visages et textures de peau excessivement photographiques ;
+- l'effet reportage photo.
 
 Un ordinateur ou un smartphone peut apparaître comme élément secondaire si la scène l'exige réellement, mais il ne doit pas constituer automatiquement le centre de l'image.
 
-DIRECTION ARTISTIQUE LBMEDIA :
+DIRECTION ARTISTIQUE :
 
 - créer une véritable scène éditoriale ;
 - rendu moderne, professionnel, élégant et crédible ;
-- environnement réel ou semi-réaliste ;
+- environnement cohérent avec le sujet ;
 - privilégier les entreprises locales, commerces, ateliers, lieux professionnels, interactions clients, documents, objets et situations concrètes lorsque cela correspond au sujet ;
 - composition suffisamment riche mais aérée ;
 - profondeur, perspective et vraie mise en scène ;
 - 4 à 6 éléments visuels cohérents maximum ;
 - faire comprendre l'idée principale par la scène ;
 - palette dominée par le bleu nuit profond, le bleu, le cyan / bleu lumineux et le blanc ;
-- utiliser les couleurs LBMedia comme ambiance subtile, jamais comme filtre bleu uniforme ;
-- lumière naturelle ou professionnelle soignée ;
+- utiliser les couleurs LBMedia comme accents et ambiance subtile, jamais comme filtre bleu uniforme ;
+- conserver quelques couleurs naturelles complémentaires afin que l'image reste vivante ;
+- lumière douce et travaillée ;
 - contrastes élégants ;
-- détails réalistes ;
-- rendu photographique éditorial haut de gamme ;
+- détails suffisamment riches sans rechercher l'hyperréalisme ;
 - image crédible pour le site d'une agence de communication ;
 - suffisamment de personnalité pour attirer l'œil dans une page d'actualité ;
-- éviter le rendu publicitaire artificiel ou la photographie de banque d'images trop parfaite ;
+- éviter le rendu publicitaire artificiel ;
 - éviter absolument le rendu jouet, plastique, cartoon, pictogrammes 3D ou illustration SaaS ;
 - éviter les compositions minimalistes constituées de quelques objets isolés sur un fond vide.
 
@@ -313,6 +343,8 @@ Facilement recadrable.
 IMPORTANT :
 Le concept de l'image doit être choisi à partir du contenu réel de l'article.
 Ne pas utiliser une scène de bureau générique comme solution par défaut.
+Ne pas produire une photographie corporate classique.
+Le résultat final doit conserver une légère stylisation éditoriale clairement perceptible.
 `.trim();
 
     const result =
