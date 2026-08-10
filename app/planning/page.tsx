@@ -54,16 +54,10 @@ function getNewsTitle(
   relation: PlanningPublication["news"]
 ) {
   if (Array.isArray(relation)) {
-    return (
-      relation[0]?.title ??
-      "Actualité"
-    );
+    return relation[0]?.title ?? "Actualité";
   }
 
-  return (
-    relation?.title ??
-    "Actualité"
-  );
+  return relation?.title ?? "Actualité";
 }
 
 function formatDate(
@@ -120,22 +114,19 @@ function getParisDateParts(
 
   const year = Number(
     parts.find(
-      (part) =>
-        part.type === "year"
+      (part) => part.type === "year"
     )?.value
   );
 
   const month = Number(
     parts.find(
-      (part) =>
-        part.type === "month"
+      (part) => part.type === "month"
     )?.value
   );
 
   const day = Number(
     parts.find(
-      (part) =>
-        part.type === "day"
+      (part) => part.type === "day"
     )?.value
   );
 
@@ -256,44 +247,18 @@ export default async function PlanningPage() {
       });
 
   if (error) {
-    console.error(
-      "PLANNING SUPABASE ERROR",
-      error
-    );
-
     throw new Error(
       `Impossible de charger le planning : ${error.message}`
     );
   }
 
   const publications =
-    (data ??
-      []) as PlanningPublication[];
-
-  console.log(
-    "PLANNING PUBLICATIONS",
-    publications.map(
-      (publication) => ({
-        id: publication.id,
-        news_id:
-          publication.news_id,
-        channel:
-          publication.channel,
-        status:
-          publication.status,
-        scheduled_at:
-          publication.scheduled_at,
-        published_at:
-          publication.published_at,
-      })
-    )
-  );
+    (data ?? []) as PlanningPublication[];
 
   const ready =
     publications.filter(
       (publication) =>
-        publication.status ===
-        "ready"
+        publication.status === "ready"
     );
 
   const scheduled =
@@ -327,22 +292,6 @@ export default async function PlanningPage() {
         publication.status ===
         "failed"
     );
-
-  console.log(
-    "PLANNING COUNTS",
-    {
-      total:
-        publications.length,
-      ready: ready.length,
-      scheduled:
-        scheduled.length,
-      published:
-        published.length,
-      failed: failed.length,
-      invalidScheduled:
-        invalidScheduled.length,
-    }
-  );
 
   const overdue =
     scheduled.filter(
@@ -408,18 +357,6 @@ export default async function PlanningPage() {
       }
     );
 
-  console.log(
-    "PLANNING PERIODS",
-    {
-      overdue: overdue.length,
-      today: today.length,
-      thisWeek:
-        thisWeek.length,
-      later: later.length,
-      daysUntilSunday,
-    }
-  );
-
   return (
     <main className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-6xl px-6 py-10">
@@ -470,9 +407,7 @@ export default async function PlanningPage() {
           <PlanningSection
             title="En retard"
             description="Ces publications avaient une date prévue qui est maintenant dépassée."
-            publications={
-              overdue
-            }
+            publications={overdue}
             tone="warning"
           />
         ) : null}
@@ -488,9 +423,7 @@ export default async function PlanningPage() {
         <PlanningSection
           title="Cette semaine"
           description="Publications prévues d’ici dimanche."
-          publications={
-            thisWeek
-          }
+          publications={thisWeek}
           emptyMessage="Aucune autre publication prévue cette semaine."
         />
 
@@ -531,9 +464,7 @@ export default async function PlanningPage() {
               {ready.map(
                 (publication) => (
                   <PublicationRow
-                    key={
-                      publication.id
-                    }
+                    key={publication.id}
                     publication={
                       publication
                     }
@@ -572,9 +503,7 @@ export default async function PlanningPage() {
               {invalidScheduled.map(
                 (publication) => (
                   <PublicationRow
-                    key={
-                      publication.id
-                    }
+                    key={publication.id}
                     publication={
                       publication
                     }
@@ -604,9 +533,7 @@ export default async function PlanningPage() {
               {failed.map(
                 (publication) => (
                   <PublicationRow
-                    key={
-                      publication.id
-                    }
+                    key={publication.id}
                     publication={
                       publication
                     }
@@ -734,9 +661,7 @@ function PlanningSection({
           {publications.map(
             (publication) => (
               <PublicationRow
-                key={
-                  publication.id
-                }
+                key={publication.id}
                 publication={
                   publication
                 }
