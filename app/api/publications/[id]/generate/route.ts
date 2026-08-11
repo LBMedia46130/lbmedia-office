@@ -100,7 +100,7 @@ Le lecteur doit comprendre en quelques secondes :
 
 Le texte ne doit PAS être un résumé miniature de tout l'article.
 
-Choisis un seul angle fort issu de l'article source.
+Choisis un seul angle fort issu du contenu source.
 
 STYLE
 
@@ -128,9 +128,9 @@ Tu prépares un post LinkedIn pour LBMedia.
 
 OBJECTIF
 
-Le post doit apporter un point de vue, une observation ou une réflexion professionnelle issue de l'article.
+Le post doit apporter un point de vue, une observation ou une réflexion professionnelle issue du contenu source.
 
-Ne résume PAS l'article paragraphe par paragraphe.
+Ne résume PAS mécaniquement le contenu.
 
 Choisis l'idée la plus intéressante pour un dirigeant de TPE ou PME et développe-la sous forme de publication autonome.
 
@@ -146,7 +146,9 @@ STYLE
 - pas de langage artificiellement inspirant ;
 - pas de discours commercial direct.
 
-Le post doit donner envie de réfléchir, de réagir ou de lire l'article complet.
+Le post doit donner envie de réfléchir ou de réagir.
+
+S'il provient d'un article existant, il peut naturellement donner envie de lire l'article complet.
 
 HASHTAGS
 
@@ -169,7 +171,7 @@ Le post doit être accessible immédiatement à un dirigeant de petite entrepris
 
 Il peut être plus conversationnel que LinkedIn, mais doit rester professionnel.
 
-Ne résume PAS tout l'article.
+Ne résume PAS mécaniquement tout le contenu source.
 
 Choisis un angle simple :
 - une question concrète ;
@@ -188,7 +190,7 @@ STYLE
 - pas de formule marketing exagérée ;
 - pas de longue démonstration.
 
-La publication doit fonctionner seule dans le fil Facebook et donner naturellement envie d'en savoir plus.
+La publication doit fonctionner seule dans le fil Facebook.
 
 Retourne :
 - content : publication Facebook complète et directement exploitable.
@@ -279,7 +281,29 @@ export async function POST(
     ? publication.news[0]
     : publication.news;
 
-  if (!newsRelation) {
+  const isStandalone =
+    !publication.news_id;
+
+  if (
+    isStandalone &&
+    channel === "website"
+  ) {
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Une publication WordPress doit être rattachée à une actualité.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  if (
+    !newsRelation &&
+    !isStandalone
+  ) {
     return NextResponse.json(
       {
         success: false,
@@ -292,10 +316,31 @@ export async function POST(
     );
   }
 
+  if (
+    isStandalone &&
+    !publication.title?.trim() &&
+    !publication.content?.trim()
+  ) {
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Indique un sujet ou un brief avant de demander à Pénélope de rédiger la publication.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
   const lbmediaContext =
     getLbmediaContext();
 
-  const sourceContent = `
+  const sourceContent =
+    newsRelation
+      ? `
+Cette publication est une déclinaison d'une actualité LBMedia existante.
+
 Titre de l'actualité :
 ${newsRelation.title}
 
@@ -304,6 +349,29 @@ ${newsRelation.content || "Aucun contenu détaillé."}
 
 Lien associé :
 ${newsRelation.source_url || "Aucun lien"}
+`
+      : `
+Cette publication est indépendante.
+
+Elle n'est rattachée à aucun article du site LBMedia.
+
+Tu dois rédiger directement une publication pour le canal demandé à partir du sujet ou du brief fourni ci-dessous.
+
+Sujet :
+${publication.title || "Aucun titre distinct."}
+
+Brief ou contenu de départ :
+${publication.content || "Aucun contenu détaillé."}
+
+Lien associé :
+${publication.link_url || "Aucun lien"}
+
+IMPORTANT :
+- ne fais aucune référence à un article source qui n'existe pas ;
+- ne demande pas au lecteur de lire un article complet ;
+- transforme le brief en véritable publication autonome ;
+- respecte strictement les informations disponibles dans le brief ;
+- n'invente aucun fait absent du brief.
 `;
 
   try {
@@ -318,11 +386,15 @@ Voici la connaissance éditoriale permanente de LBMedia :
 
 ${lbmediaContext}
 
-Tu dois adapter une actualité existante à un support de communication précis.
+Tu dois préparer un contenu pour un support de communication précis.
+
+Le contenu peut être :
+- soit une déclinaison d'une actualité LBMedia existante ;
+- soit une publication indépendante créée directement pour ce support.
 
 PRINCIPE ESSENTIEL
 
-Une déclinaison n'est PAS un résumé automatique de l'article.
+Une publication adaptée à un canal n'est PAS un résumé automatique.
 
 Chaque support a :
 - son propre usage ;
@@ -330,7 +402,7 @@ Chaque support a :
 - son propre niveau de détail ;
 - son propre objectif.
 
-Tu dois donc sélectionner dans l'article l'angle le plus adapté au canal demandé.
+Tu dois sélectionner ou développer l'angle le plus adapté au canal demandé à partir du contenu source fourni.
 
 RÈGLES COMMUNES
 
@@ -341,10 +413,26 @@ RÈGLES COMMUNES
 - adopte le ton LBMedia ;
 - évite le jargon ;
 - évite les formulations génériques ;
-- évite de recopier les mêmes phrases que l'article ;
-- évite de reprendre mécaniquement ses intertitres ;
 - évite les listes si elles ne sont pas nécessaires ;
 - n'ajoute aucune explication sur ton travail.
+
+PUBLICATION INDÉPENDANTE
+
+Lorsque le contenu source indique qu'il s'agit d'une publication indépendante :
+- considère le titre et le contenu fournis comme un brief éditorial ;
+- rédige une véritable publication autonome ;
+- ne suppose jamais qu'un article de blog existe ;
+- ne parle pas de "notre article", "cet article", "lire la suite" ou équivalent sauf si le brief le demande explicitement ;
+- n'invente pas de lien vers le site ;
+- conserve uniquement les faits réellement présents dans le brief.
+
+DÉCLINAISON D'UNE ACTUALITÉ
+
+Lorsque le contenu source contient une actualité existante :
+- utilise cette actualité comme référence ;
+- sélectionne l'angle le plus pertinent pour le canal ;
+- évite de recopier les mêmes phrases ;
+- évite de reprendre mécaniquement les intertitres de l'article.
 
 INSTRUCTIONS SPÉCIFIQUES AU CANAL
 
@@ -518,7 +606,7 @@ N'utilise aucun bloc Markdown.
         );
     }
 
-    if (newsRelation.source_url) {
+    if (newsRelation?.source_url) {
       updateData.link_url =
         newsRelation.source_url;
     }
@@ -554,7 +642,9 @@ N'utilise aucun bloc Markdown.
       {
         success: false,
         message:
-          "Impossible de générer la déclinaison.",
+          isStandalone
+            ? "Impossible de générer la publication."
+            : "Impossible de générer la déclinaison.",
         error:
           error instanceof Error
             ? error.message
