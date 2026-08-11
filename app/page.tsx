@@ -585,10 +585,10 @@ export default async function HomePage() {
             </div>
 
             <Link
-              href="/news/new"
+              href="/news"
               className="text-sm font-semibold text-slate-600 transition hover:text-slate-950"
             >
-              + Nouvelle actualité
+              Voir toutes les actualités →
             </Link>
           </div>
 
