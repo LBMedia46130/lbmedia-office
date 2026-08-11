@@ -227,42 +227,93 @@ DIRECTION VISUELLE POUR CETTE GÉNÉRATION :
 - ${framingDirection};
 - ${humanDirection}.
 
-STYLE VISUEL LBMEDIA :
+STYLE VISUEL LBMEDIA — RÈGLE PRIORITAIRE :
 
-Créer une ILLUSTRATION ÉDITORIALE SEMI-RÉALISTE HAUT DE GAMME.
+Créer une ILLUSTRATION NUMÉRIQUE ÉDITORIALE CONTEMPORAINE.
 
-Le rendu doit se situer entre :
-- une photographie éditoriale ;
-- une illustration numérique contemporaine ;
-- une image de magazine professionnel.
+Le résultat doit être clairement identifiable comme une illustration créée pour un article de magazine ou un média professionnel.
 
-L'image doit rester crédible et humaine, mais elle ne doit PAS donner l'impression d'être une photographie brute ou une photo issue d'une banque d'images.
+CE N'EST PAS UNE PHOTOGRAPHIE.
 
-Rechercher :
-- des formes légèrement simplifiées et élégantes ;
-- des textures travaillées ;
-- une lumière éditoriale subtile ;
-- des volumes doux ;
-- une profondeur naturelle ;
-- une légère stylisation des personnages et des décors ;
-- une composition graphique plus travaillée qu'une photographie classique ;
-- une identité visuelle contemporaine et cohérente d'un article LBMedia à l'autre.
+Ne pas rechercher le photoréalisme.
+Ne pas imiter une photographie professionnelle.
+Ne pas imiter une banque d'images.
+Ne pas produire un rendu de reportage photographique.
 
-Les personnages, lorsqu'ils sont présents, doivent rester naturels mais légèrement stylisés.
-Les décors doivent être crédibles sans chercher le photoréalisme absolu.
+Le style doit associer :
 
-L'image doit immédiatement être perçue comme une ILLUSTRATION ÉDITORIALE et non comme une photographie documentaire.
+- une représentation figurative et immédiatement compréhensible ;
+- des personnages et objets reconnaissables mais volontairement stylisés ;
+- des formes légèrement simplifiées ;
+- des volumes doux et dessinés ;
+- des matières et textures illustrées ;
+- des contours subtils lorsque cela améliore la lisibilité ;
+- une lumière graphique et éditoriale ;
+- une profondeur construite par l'illustration ;
+- une composition élégante proche d'une illustration de presse ou de magazine ;
+- un niveau de détail intermédiaire : suffisamment riche pour être professionnel, suffisamment stylisé pour ne jamais ressembler à une photo.
+
+La stylisation doit être immédiatement perceptible.
+
+Les personnages ne doivent pas avoir une peau, des cheveux ou des vêtements reproduits avec un niveau de détail photographique.
+
+Les lieux ne doivent pas donner l'impression d'avoir été photographiés.
+
+Les ombres, matières, lumières et volumes doivent conserver une interprétation graphique.
+
+Le résultat doit être adulte, élégant et professionnel.
+
+NE PAS BASCULER VERS :
+
+- le cartoon enfantin ;
+- la bande dessinée ;
+- le dessin humoristique ;
+- l'illustration vectorielle plate ;
+- les personnages corporate simplistes ;
+- l'esthétique SaaS ;
+- les pictogrammes ;
+- la 3D plastique ;
+- le rendu jouet ;
+- le collage ;
+- l'aquarelle traditionnelle ;
+- la peinture classique.
+
+IDENTITÉ VISUELLE LBMEDIA :
+
+Les visuels doivent pouvoir être reconnus comme appartenant à une même collection éditoriale LBMedia.
+
+Conserver d'une génération à l'autre :
+
+- le même degré de stylisation ;
+- une sophistication graphique comparable ;
+- des compositions éditoriales modernes ;
+- une ambiance professionnelle mais accessible ;
+- une palette cohérente ;
+- une utilisation récurrente et subtile des couleurs LBMedia.
+
+La palette privilégie :
+
+- bleu nuit profond ;
+- bleu soutenu ;
+- cyan / bleu lumineux ;
+- blanc et tons clairs ;
+- quelques couleurs naturelles complémentaires nécessaires à la scène.
+
+Les couleurs LBMedia doivent structurer ou ponctuer l'image sans appliquer un filtre bleu uniforme.
+
+Chaque illustration doit cependant rester différente dans son sujet, son environnement, son cadrage et sa composition.
 
 DIVERSITÉ ÉDITORIALE :
 
-Les illustrations LBMedia doivent former une collection variée tout en conservant une même famille graphique.
+Les illustrations LBMedia doivent former une collection variée tout en conservant cette même famille graphique.
 
 Chaque article doit pouvoir avoir son propre univers visuel en fonction de son sujet.
 
 Avant de composer l'image, identifier mentalement :
+
 1. quel est le problème concret traité par l'article ;
-2. quelle situation réelle pourrait représenter ce problème ;
-3. quels éléments visuels permettraient de comprendre cette situation sans aucun texte.
+2. quelle situation pourrait représenter visuellement ce problème ;
+3. quels éléments permettraient de comprendre cette situation sans aucun texte.
 
 Choisir cette situation plutôt qu'une représentation générique du travail de bureau.
 
@@ -279,31 +330,34 @@ Choisir cette situation plutôt qu'une représentation générique du travail de
 - les scènes interchangeables de coworking ;
 - les décors de bureau sans rapport précis avec l'article ;
 - l'esthétique de photographie corporate de banque d'images ;
-- le photoréalisme absolu ;
-- les visages et textures de peau excessivement photographiques ;
-- l'effet reportage photo.
+- le photoréalisme ;
+- l'hyperréalisme ;
+- les textures photographiques ;
+- l'effet reportage photo ;
+- les éclairages cinématographiques hyperréalistes ;
+- la profondeur de champ photographique artificielle.
 
 Un ordinateur ou un smartphone peut apparaître comme élément secondaire si la scène l'exige réellement, mais il ne doit pas constituer automatiquement le centre de l'image.
 
 DIRECTION ARTISTIQUE :
 
-- créer une véritable scène éditoriale ;
-- rendu moderne, professionnel, élégant et crédible ;
+- créer une véritable scène éditoriale illustrée ;
+- rendu moderne, professionnel, élégant et clairement stylisé ;
 - environnement cohérent avec le sujet ;
 - privilégier les entreprises locales, commerces, ateliers, lieux professionnels, interactions clients, documents, objets et situations concrètes lorsque cela correspond au sujet ;
 - composition suffisamment riche mais aérée ;
-- profondeur, perspective et vraie mise en scène ;
+- profondeur, perspective et véritable mise en scène ;
 - 4 à 6 éléments visuels cohérents maximum ;
 - faire comprendre l'idée principale par la scène ;
-- palette dominée par le bleu nuit profond, le bleu, le cyan / bleu lumineux et le blanc ;
-- utiliser les couleurs LBMedia comme accents et ambiance subtile, jamais comme filtre bleu uniforme ;
+- utiliser les couleurs LBMedia comme accents et éléments de cohérence visuelle ;
 - conserver quelques couleurs naturelles complémentaires afin que l'image reste vivante ;
-- lumière douce et travaillée ;
+- lumière douce interprétée graphiquement ;
 - contrastes élégants ;
-- détails suffisamment riches sans rechercher l'hyperréalisme ;
-- image crédible pour le site d'une agence de communication ;
+- détails riches mais simplifiés par l'illustration ;
+- image adaptée au site d'une agence de communication ;
 - suffisamment de personnalité pour attirer l'œil dans une page d'actualité ;
 - éviter le rendu publicitaire artificiel ;
+- éviter absolument le rendu photographique ;
 - éviter absolument le rendu jouet, plastique, cartoon, pictogrammes 3D ou illustration SaaS ;
 - éviter les compositions minimalistes constituées de quelques objets isolés sur un fond vide.
 
@@ -348,7 +402,7 @@ Les documents, carnets, feuilles, écrans ou supports présents dans l'image ser
 
 Ils ne doivent jamais devenir un moyen détourné d'afficher du texte, une interface, un wireframe, un diagramme, des coches, des symboles ou des éléments graphiques assimilables à une interface.
 
-Le résultat doit être une véritable IMAGE D'ILLUSTRATION ÉDITORIALE.
+Le résultat doit être une véritable ILLUSTRATION ÉDITORIALE.
 
 Elle doit donner envie de lire l'article et représenter UNE idée forte issue du contenu, plutôt que chercher à résumer l'ensemble de l'article.
 
@@ -358,10 +412,12 @@ Image suffisamment riche mais aérée.
 Facilement recadrable.
 
 IMPORTANT :
+
 Le concept de l'image doit être choisi à partir du contenu réel de l'article.
+
 Ne pas utiliser une scène de bureau générique comme solution par défaut.
-Ne pas produire une photographie corporate classique.
-Le résultat final doit conserver une légère stylisation éditoriale clairement perceptible.
+
+Le résultat final doit être immédiatement identifiable comme une illustration numérique éditoriale LBMedia et ne doit jamais pouvoir être confondu avec une photographie.
 `.trim();
 
     const result =
