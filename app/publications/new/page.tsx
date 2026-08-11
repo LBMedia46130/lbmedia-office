@@ -19,15 +19,12 @@ export default function NewPublicationPage() {
           </p>
 
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
-            Nouvelle publication
+            Nouveau post
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Prépare un contenu
-            directement pour un
-            support, sans créer
-            d’actualité ni de
-            déclinaisons inutiles.
+            Prépare un post directement pour un support, sans créer
+            d’actualité ni de déclinaisons inutiles.
           </p>
         </div>
 

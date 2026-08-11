@@ -393,7 +393,7 @@ export default async function PlanningPage() {
               href="/publications/new"
               className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-100"
             >
-              + Nouvelle publication
+              + Nouveau post
             </Link>
 
             <Link
