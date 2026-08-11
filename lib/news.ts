@@ -59,7 +59,7 @@ export type PublicationStatus =
 
 export type Publication = {
   id: string;
-  news_id: string;
+  news_id: string | null;
   channel: PublicationChannel;
 
   title: string | null;
