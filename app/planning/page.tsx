@@ -12,7 +12,7 @@ export const revalidate = 0;
 
 type PlanningPublication = {
   id: string;
-  news_id: string;
+  news_id: string | null;
   channel: PublicationChannel;
   title: string | null;
   status: PublicationStatus;
@@ -58,6 +58,16 @@ function getNewsTitle(
   }
 
   return relation?.title ?? "Actualité";
+}
+
+function getPublicationHref(
+  publication: PlanningPublication
+) {
+  if (publication.news_id) {
+    return `/news/${publication.news_id}`;
+  }
+
+  return `/publications/${publication.id}`;
 }
 
 function formatDate(
@@ -378,12 +388,21 @@ export default async function PlanningPage() {
             </p>
           </div>
 
-          <Link
-            href="/news/new"
-            className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-          >
-            + Nouvelle actualité
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/publications/new"
+              className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-100"
+            >
+              + Nouvelle publication
+            </Link>
+
+            <Link
+              href="/news/new"
+              className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              + Nouvelle actualité
+            </Link>
+          </div>
         </div>
 
         <section className="mt-8 grid gap-4 sm:grid-cols-3">
@@ -707,6 +726,9 @@ function PublicationRow({
       publication.news
     );
 
+  const isStandalone =
+    !publication.news_id;
+
   const date =
     publication.status ===
     "published"
@@ -719,11 +741,15 @@ function PublicationRow({
     "website"
       ? newsTitle
       : publication.title ||
-        newsTitle;
+        (isStandalone
+          ? "Publication"
+          : newsTitle);
 
   return (
     <Link
-      href={`/news/${publication.news_id}`}
+      href={getPublicationHref(
+        publication
+      )}
       className={`group block rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md ${
         compact
           ? "p-4"
@@ -758,10 +784,17 @@ function PublicationRow({
             {displayTitle}
           </h3>
 
-          {publication.channel !==
-          "website" ? (
+          {!isStandalone &&
+          publication.channel !==
+            "website" ? (
             <p className="mt-1 text-sm text-slate-500">
               {newsTitle}
+            </p>
+          ) : null}
+
+          {isStandalone ? (
+            <p className="mt-1 text-xs font-medium text-slate-400">
+              Publication indépendante
             </p>
           ) : null}
         </div>

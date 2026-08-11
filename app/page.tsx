@@ -12,7 +12,7 @@ export const dynamic =
 
 type DashboardPublication = {
   id: string;
-  news_id: string;
+  news_id: string | null;
   channel: PublicationChannel;
   title: string | null;
   content: string;
@@ -65,6 +65,16 @@ function getNewsTitle(
     relation?.title ??
     "Actualité"
   );
+}
+
+function getPublicationHref(
+  publication: DashboardPublication
+) {
+  if (publication.news_id) {
+    return `/news/${publication.news_id}`;
+  }
+
+  return `/publications/${publication.id}`;
 }
 
 function getParisDateKey(
@@ -302,6 +312,13 @@ export default async function HomePage() {
               className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-100"
             >
               Ouvrir le planning
+            </Link>
+
+            <Link
+              href="/publications/new"
+              className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-100"
+            >
+              + Nouvelle publication
             </Link>
 
             <Link
@@ -670,16 +687,23 @@ function PublicationAction({
       publication.news
     );
 
+  const isStandalone =
+    !publication.news_id;
+
   const displayTitle =
     publication.channel ===
     "website"
       ? newsTitle
       : publication.title ||
-        newsTitle;
+        (isStandalone
+          ? "Publication"
+          : newsTitle);
 
   return (
     <Link
-      href={`/news/${publication.news_id}`}
+      href={getPublicationHref(
+        publication
+      )}
       className={`block rounded-2xl border p-5 shadow-sm transition hover:shadow-md ${
         tone === "error"
           ? "border-red-200 bg-white hover:border-red-300"
@@ -700,10 +724,17 @@ function PublicationAction({
             {displayTitle}
           </h3>
 
-          {publication.channel !==
-          "website" ? (
+          {!isStandalone &&
+          publication.channel !==
+            "website" ? (
             <p className="mt-1 text-sm text-slate-500">
               {newsTitle}
+            </p>
+          ) : null}
+
+          {isStandalone ? (
+            <p className="mt-1 text-xs font-medium text-slate-400">
+              Publication indépendante
             </p>
           ) : null}
         </div>
